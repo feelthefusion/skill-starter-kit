@@ -33,13 +33,13 @@ Don't use for:
 
 **On this device** (kit already cloned locally):
 ```bash
-bash ~/markymark-kit/install/install.sh
+bash ~/skill-starter-kit/install/install.sh
 ```
 
 **On a brand-new device** — this is the recall flow:
 ```bash
 # 1. clone the kit (this repo)
-git clone https://github.com/feelthefusion/markymark-skill-starter-kit.git && cd markymark-skill-starter-kit
+git clone https://github.com/feelthefusion/skill-starter-kit.git && cd skill-starter-kit
 # 2. install all 7
 bash install/install.sh
 ```

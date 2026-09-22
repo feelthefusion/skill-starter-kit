@@ -19,8 +19,8 @@ context-triage sub-agents, per-stack language servers, and GitHub tooling.
 ## Quick start (fresh device)
 
 ```bash
-git clone https://github.com/feelthefusion/markymark-skill-starter-kit.git
-cd markymark-skill-starter-kit
+git clone https://github.com/feelthefusion/skill-starter-kit.git
+cd skill-starter-kit
 bash install/install.sh
 ```
 
