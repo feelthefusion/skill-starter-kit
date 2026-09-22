@@ -63,33 +63,79 @@ curl -fsSL https://raw.githubusercontent.com/feelthefusion/skill-starter-kit/mai
 ```
 Or `git clone https://github.com/feelthefusion/skill-starter-kit.git && bash skill-starter-kit/install/install.sh` (`hermes.sh` for Hermes).
 
-**Claude Code, then inside the session:**
-```
-/plugin install superpowers@superpowers-marketplace
-/plugin install supermemory@supermemory-plugins
-/plugin install security-guidance@claude-plugins-official
-/plugin install claude-security@claude-plugins-official
-/plugin install playwright@claude-plugins-official
-/plugin install chrome-devtools-mcp@claude-plugins-official
-```
-Restart. Then **per project, never global**: the matching `<lang>-lsp`, `context7`, GitHub MCP.
-Optional: `claude-md-management` (`/revise-claude-md` folds session learnings into `AGENTS.md`)
-and `session-report` (measures the startup-context claim below).
+**Claude Code:** the installer finds `claude` (on PATH, or bundled inside the Claude desktop
+app) and installs/updates all six plugins itself, writes a 10-line always-on stanza to
+`~/.claude/CLAUDE.md`, and puts `kit-init` on your PATH. Restart Claude Code once (or
+`/reload-plugins`). If no `claude` binary is found, the installer prints the `/plugin install`
+lines to paste (see *Manual triggers* below).
 
-**Hermes:** open a new session (skill index loads at start), then optionally
-`hermes plugins install obra/superpowers --enable` and
-`hermes config set memory.provider supermemory`. Guardrails scripts land in
-`~/.hermes/agent-hooks/`; wire them with `skills/guardrails/templates/hermes-hooks.yaml`.
+**Hermes:** skills are installed and the guardrails hooks are wired into `config.yaml` with
+`hermes config set` (skipped if you already have custom hooks — see *Manual triggers*). Open a
+new session; the skill index loads at start. Superpowers is **not** installed on Hermes by
+default: Hermes bundles the equivalent skills, and its plugin scanner flags Superpowers' test
+scripts (use `--force` if you want it anyway — one or the other, never both).
 
 ### First thing in a new repo
 ```bash
-bash ~/skill-starter-kit/install/init-project.sh
+kit-init            # = bash <kit>/install/init-project.sh   (installed on PATH by the installer)
 ```
 Writes `AGENTS.md` (+ `CLAUDE.md` pointer), `verify.sh`, `.claude/settings.json` (Stop hook +
 guardrails hooks + deny-list + sandbox), `.claude/hooks/{guard,format}.sh`, and the install-hygiene
 config for your package manager (`.npmrc` / `pnpm-workspace.yaml` / `.yarnrc.yml` / `bunfig.toml`).
-Never overwrites existing files. Then: edit `AGENTS.md`, trim `verify.sh`, **break something and
-confirm the gate blocks the turn**, add your stack's irreversible commands to `guard.sh`, commit.
+Never overwrites your files: an existing `.claude/settings.json` is **merged** (your hooks kept,
+kit hooks/deny/sandbox added), an existing `.npmrc` gets only the missing hygiene keys
+(`ignore-scripts` is added *commented* — enable after one clean build without scripts), and a real
+`CLAUDE.md` is kept as the instructions file. Then: edit `AGENTS.md`, trim `verify.sh`, **break
+something and confirm the gate blocks the turn**, add your stack's irreversible commands to
+`guard.sh`, commit.
+
+## One line to install, one command per repo — everything else is automatic
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/feelthefusion/skill-starter-kit/main/install/bootstrap.sh | bash                 # Claude Code
+curl -fsSL https://raw.githubusercontent.com/feelthefusion/skill-starter-kit/main/install/bootstrap.sh | bash -s -- hermes    # Hermes
+```
+```bash
+kit-init      # in any repo: AGENTS.md, generated verify.sh, hooks, deny-list, sandbox, hygiene, LSP + context7 + GitHub MCP, baseline run
+```
+
+**What the one-liner does for you (Claude Code):** clones/pulls the kit · fetches Graphify, Caveman,
+Taste from their upstream repos · installs all 12 skills · finds `claude` (PATH or the desktop app's
+bundle) and installs/updates the six plugins (Superpowers, Supermemory, security-guidance,
+claude-security, playwright, chrome-devtools-mcp) · installs and auto-starts the local Supermemory
+server · installs gitleaks, osv-scanner, uv · writes a 10-line always-on stanza to
+`~/.claude/CLAUDE.md` · puts `kit-init` on your PATH. Restart Claude Code once.
+
+**What it does for you (Hermes):** the same skills · wires guardrails hooks into `config.yaml`
+(merging with any hooks you already have) · sets Supermemory as the memory provider when the local
+server is running · puts `kit-init` on your PATH. Superpowers is not installed on Hermes by default
+(Hermes bundles the equivalents; its scanner flags Superpowers' test scripts).
+
+**What `kit-init` does in a repo:** detects the stack (npm/pnpm/yarn/bun, Python, Go, Rust) and
+**generates `verify.sh` from the scripts that actually exist** · merges hooks/deny/sandbox into
+`.claude/settings.json` (yours kept) · adds hygiene keys to `.npmrc` (`ignore-scripts` commented in
+existing repos) · keeps a real `CLAUDE.md` if you have one · installs the stack's LSP, `context7`
+and read-only GitHub MCP at project scope · **runs `verify.sh` once** and tells you GREEN or RED.
+
+**Then just prompt.** Skills are model-invoked; the stanza and the `skill-starter-kit` recall
+skill make the loop the default; hooks are deterministic. You never name a skill.
+
+### The complete manual list
+```text
+# edit once per repo (the agent cannot infer these)
+$EDITOR AGENTS.md            # replace the <placeholders>; ≤12 lines
+
+# on demand, per task — deliberately not automatic
+/graphify                    # knowledge graph: only for a large unfamiliar repo or non-code corpus
+/claude-security             # deep semantic security review, before a PR
+caveman mode                 # compress the final summary only; "stop caveman" to turn off
+/goal gate add "./verify.sh" # Hermes: per-task gate (the pre_verify hook already covers the default)
+```
+```bash
+# only if the installer told you it could not do it itself
+hermes plugins install obra/superpowers --enable --force     # Superpowers on Hermes instead of the bundled skills
+claude plugin install <lang>-lsp@claude-plugins-official --scope project   # a stack kit-init did not detect
+```
 
 ## Staying current
 

@@ -5,6 +5,7 @@
      length, position and splitting changed nothing; auto-generated long files were
      net-negative on SWE-bench (ETH Zurich). Keep it short, keep it true. -->
 
+- **Workflow:** this repo uses the Skill Starter Kit — follow the `skill-starter-kit` map by default (plan → docs check → TDD → browser check → `verify` → review). Hooks in `.claude/` enforce the floor; fix causes, never bypass them.
 - **Verify:** `./verify.sh` — typecheck, lint, test, build, dep audit. Run it before saying "done"; paste its output.
 - **Stack:** <language + framework>, package manager `<npm|pnpm|uv|cargo>`. Install with the lockfile (`npm ci` / `uv sync --locked`), never bare `install`.
 - **Run locally:** `<command>` · **Tests:** `<command>` (one file: `<command> path`).

@@ -258,6 +258,32 @@ fi
 echo "─── done ───────────────────────────────────────────────"
 echo "Plugins track GitHub automatically: marketplaces are registered by repo, so"
 echo "Claude Code fetches the latest from origin — no pinned versions in this kit."
+
+# --- always-on: a short kit stanza in the USER-level ~/.claude/CLAUDE.md -------------------
+# Skills are model-invoked from their descriptions; this 10-line stanza makes the workflow the
+# default in every project without the user naming a skill. Idempotent (marker-delimited).
+write_claude_stanza() {
+    local f="$HOME/.claude/CLAUDE.md" tmp
+    mkdir -p "$HOME/.claude"; touch "$f"
+    tmp="$(mktemp)"
+    # drop any previous stanza, then append the current one
+    awk '/<!-- skill-starter-kit:start -->/{skip=1} !skip{print} /<!-- skill-starter-kit:end -->/{skip=0}' "$f" > "$tmp"
+    cat >> "$tmp" <<'MD'
+<!-- skill-starter-kit:start -->
+# Skill Starter Kit (always on — no need to name a skill)
+- Work the default loop for every coding task: orient (LSP/grep; `graphify` only for a large unfamiliar repo) → brainstorm/plan (superpowers) → check any new dependency exists and is >7 days old (docs-freshness, security-gate) → build with TDD and taste-code rules → see UI in a real browser (browser-verify) → run `./verify.sh` and paste its output before saying done (verify-gate) → review, then gitleaks → commit → PR.
+- Hooks enforce the floor: `.claude/hooks/guard.sh` blocks irreversible commands, `format.sh` formats every edit, `stop-verify.sh` blocks a turn that ends with `verify` failing. Never work around a hook; fix the cause.
+- Never install a package from memory; never suppress a failing check (`|| true`, `@ts-ignore`, `.skip`); never claim done without command output.
+- Repo without `verify.sh`/`AGENTS.md`? Run `kit-init` first. Full map: skill `skill-starter-kit`.
+<!-- skill-starter-kit:end -->
+MD
+    mv "$tmp" "$f"
+    echo "  · ~/.claude/CLAUDE.md  kit stanza written ✓ (always-on workflow, ~10 lines)"
+}
+echo "▶ always-on workflow"
+write_claude_stanza
+mkdir -p "$HOME/.local/bin" && ln -sf "$KIT_ROOT/install/init-project.sh" "$HOME/.local/bin/kit-init" && echo "  · kit-init → ~/.local/bin/kit-init ✓ (run it in any repo)"
+
 # --- actually install the plugins when a claude binary can be found ------------------
 # PATH first; then the Claude desktop app's bundled Claude Code (newest version dir).
 find_claude() {
@@ -294,7 +320,7 @@ else
 fi
 echo "      then restart the session (or /reload-plugins) so skills + hooks load."
 echo
-echo "FIRST THING in a new project:  bash $KIT_ROOT/install/init-project.sh"
+echo "FIRST THING in a new project:  kit-init      (= bash $KIT_ROOT/install/init-project.sh)"
 echo "  → AGENTS.md, verify.sh, .claude/settings.json (guardrails + Stop hook + deny + sandbox), .npmrc"
 echo "  Then trim verify.sh, BREAK something, and confirm the gate blocks the turn."
 echo

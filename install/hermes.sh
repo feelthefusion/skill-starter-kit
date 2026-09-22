@@ -90,30 +90,83 @@ if command -v hermes >/dev/null 2>&1; then
     if hermes plugins list 2>/dev/null | grep -qi superpowers; then
         echo "  · superpowers plugin already installed ✓"
     else
-        echo "  · to install:  hermes plugins install obra/superpowers --enable"
-        echo "    (or rely on Hermes' bundled systematic-debugging / TDD / requesting-code-review / plan"
-        echo "     / spike / simplify-code — one or the other, never both)"
+        echo "  · not installed. Hermes already bundles the equivalent skills (systematic-debugging, TDD,"
+        echo "    requesting-code-review, plan, spike, simplify-code) — that is the kit default on Hermes."
+        echo "    To use Superpowers instead:  hermes plugins install obra/superpowers --enable"
+        echo "    (Hermes' plugin scanner flags its test scripts; add --force if you accept that. One or the other, never both.)"
     fi
 else
     echo "  · hermes CLI not on PATH — install Superpowers later: hermes plugins install obra/superpowers --enable"
 fi
 
-# --- 12: Guardrails hook scripts → ~/.hermes/agent-hooks (config applied by you) ---------
+# --- 3: Supermemory as the Hermes memory provider (automatic when the local server is up) ---
+echo "▶ Supermemory memory provider"
+SM_URL="${SUPERMEMORY_API_URL:-http://localhost:6767}"
+SM_KEY_FILE="$HOME/.supermemory/api-key"
+HH="${HERMES_HOME:-$HOME/.hermes}"
+if command -v hermes >/dev/null 2>&1 && curl -fsS -m 3 -o /dev/null "$SM_URL/" 2>/dev/null && [ -s "$SM_KEY_FILE" ]; then
+    HPY="$(dirname "$(readlink -f "$(command -v hermes)")")/python"
+    [ -x "$HPY" ] || HPY="$HH/hermes-agent/venv/bin/python"
+    if [ -x "$HPY" ] && ! "$HPY" -c 'import supermemory' >/dev/null 2>&1; then
+        "$HPY" -m pip install -q supermemory >/dev/null 2>&1 || uv pip install -q --python "$HPY" supermemory >/dev/null 2>&1 || true
+    fi
+    [ -f "$HH/supermemory.json" ] || printf '{\n  "base_url": "%s"\n}\n' "$SM_URL" > "$HH/supermemory.json"
+    touch "$HH/.env"; chmod 600 "$HH/.env"
+    grep -q '^SUPERMEMORY_API_KEY=' "$HH/.env" || printf 'SUPERMEMORY_API_KEY=%s\n' "$(cat "$SM_KEY_FILE")" >> "$HH/.env"
+    if [ "$(hermes config get memory.provider 2>/dev/null)" != "supermemory" ]; then
+        hermes config set memory.provider supermemory >/dev/null 2>&1 && echo "  · memory.provider = supermemory (local server $SM_URL) ✓" \
+            || echo "  ⚠ could not set memory.provider — run: hermes config set memory.provider supermemory"
+    else
+        echo "  · memory.provider already supermemory ✓"
+    fi
+else
+    echo "  · local Supermemory server not detected (needs $SM_URL up + $SM_KEY_FILE) — built-in memory stays active."
+    echo "    Install the server with the Claude Code installer or the supermemory-local skill, then re-run."
+fi
+
+# --- 12: Guardrails hook scripts → ~/.hermes/agent-hooks, wired into config.yaml -----------
 HOOKS_DIR="${HERMES_HOME:-$HOME/.hermes}/agent-hooks"
 mkdir -p "$HOOKS_DIR"
 for s in guard.sh format.sh verify-nudge.sh; do
     cp "$KIT_SKILLS_SRC/guardrails/templates/$s" "$HOOKS_DIR/$s" && chmod +x "$HOOKS_DIR/$s"
 done
 echo "▶ guardrails hook scripts → $HOOKS_DIR ✓"
-echo "  · wire them with the hooks: block in skills/guardrails/templates/hermes-hooks.yaml"
-echo "    (apply via \`hermes config set\`; consent prompt on first use is expected)"
+if [ "${KIT_NO_HOOKS:-0}" != "1" ] && command -v hermes >/dev/null 2>&1; then
+    # same contract as skills/guardrails/templates/hermes-hooks.yaml, written with `hermes config set`
+    # (never hand-edit config.yaml). Existing hooks are preserved: we only add ours if absent.
+    KIT_HOOKS_JSON='{"pre_tool_call":[{"matcher":"terminal","command":"~/.hermes/agent-hooks/guard.sh","timeout":5,"fail_closed":true}],"post_tool_call":[{"matcher":"write_file|patch","command":"~/.hermes/agent-hooks/format.sh","timeout":30}],"pre_verify":[{"command":"~/.hermes/agent-hooks/verify-nudge.sh","timeout":180}]}'
+    if hermes config get hooks 2>/dev/null | grep -q 'agent-hooks/guard.sh'; then
+        echo "  · hermes hooks already wired ✓"
+    else
+        # merge: keep every existing hook, append ours per event (JSON in, JSON out)
+        MERGED="$(hermes config get --json hooks 2>/dev/null | python3 -c '
+import json, sys
+cur = json.load(sys.stdin) or {}
+if not isinstance(cur, dict): cur = {}
+kit = json.loads(sys.argv[1])
+for ev, entries in kit.items():
+    have = cur.get(ev) or []
+    for e in entries:
+        if not any(x.get("command") == e["command"] for x in have if isinstance(x, dict)):
+            have.append(e)
+    cur[ev] = have
+print(json.dumps(cur))' "$KIT_HOOKS_JSON" 2>/dev/null || echo "$KIT_HOOKS_JSON")"
+        hermes config set hooks "$MERGED" >/dev/null 2>&1 && echo "  · hermes hooks wired (pre_tool_call guard, post_tool_call format, pre_verify; existing hooks kept) ✓" \
+            || echo "  ⚠ hermes config set hooks failed — apply skills/guardrails/templates/hermes-hooks.yaml manually"
+        hermes config set hooks_auto_accept false >/dev/null 2>&1 || true
+    fi
+    echo "    (first run of each hook asks for consent once — expected)"
+else
+    echo "  · hooks not wired (hermes CLI missing or KIT_NO_HOOKS=1) — see skills/guardrails/templates/hermes-hooks.yaml"
+fi
+mkdir -p "$HOME/.local/bin" && ln -sf "$KIT_ROOT/install/init-project.sh" "$HOME/.local/bin/kit-init" && echo "  · kit-init → ~/.local/bin/kit-init ✓ (run it in any repo)"
 
 echo
 echo "─── done ───────────────────────────────────────────────"
 echo "Installed skills: $(ls "$HERMES_SKILLS_DIR/$CATEGORY" | tr '\n' ' ')"
 echo "A NEW Hermes session is required for the skills to appear (skill index loads at session start)."
 echo "Then say:  'set up the skill starter kit' / 'recall the kit'."
-echo "In each repo:  bash $KIT_ROOT/install/init-project.sh   (AGENTS.md, verify.sh, hooks, .npmrc)"
+echo "In each repo:  kit-init   (AGENTS.md, verify.sh, hooks, .npmrc — same script as init-project.sh)"
 echo
 echo "To update later, just re-run this installer — it pulls the kit from GitHub"
 echo "and refreshes every installed skill in place."

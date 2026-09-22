@@ -1,6 +1,6 @@
 ---
 name: skill-starter-kit
-description: "Set up, update, or operate the 12-component Claude Code / Hermes starter kit (feelthefusion/skill-starter-kit): install on a fresh device, init a new project (AGENTS.md → verify gate → guardrails → install hygiene), and know which kit component hands off to which at every step of a coding task. Use when asked to install/recall the kit, start a new project with it, or when unsure which component applies."
+description: "Use for ANY coding task in a repo — new project, feature, bug fix, refactor, review, or \"is this done?\" — and when installing or updating the kit. Gives the default workflow map of the 12-component starter kit (verify-gate, guardrails, taste, docs-freshness, browser-verify, security-gate, superpowers, LSP, GitHub MCP, supermemory, graphify, caveman) and which component to hand off to at each step, so the user never has to name a skill."
 ---
 
 # Skill Starter Kit (recall + workflow map)
