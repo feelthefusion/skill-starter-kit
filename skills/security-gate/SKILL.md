@@ -7,7 +7,8 @@ description: "Wire the OFFICIAL Anthropic security plugins (security-guidance + 
 
 Nothing else in the kit inspects what code *contains* — Superpowers governs workflow,
 taste-code governs structure, GitHub MCP transports commits. This component closes that gap
-with Anthropic's two **official** security plugins, plus an optional secrets pre-commit hook.
+with Anthropic's two **official** security plugins, plus a secrets scanner (gitleaks) for the
+literal-credential case the plugins don't target.
 Use the official plugins so you get maintained detection rules, patches, and SARIF output
 for free — the same reasoning that put the official GitHub MCP in the kit.
 
@@ -35,19 +36,37 @@ Prerequisites: `python3` ≥ 3.10 on PATH (security-guidance builds a venv under
 `~/.claude/security/` on first run and needs `pip` + network; claude-security needs only
 stdlib, python3 ≥ 3.9).
 
-## Optional: literal secrets scan (gitleaks)
+## Layer 3: literal secrets (gitleaks)
 
-The official plugins target vulnerability *patterns*; for literal credentials in staged
-diffs add gitleaks as a pre-commit hook:
+The official plugins target vulnerability *patterns*; neither greps staged diffs for literal
+**credentials** (AWS keys, GitHub/API tokens, private keys). gitleaks does — ~170 rules.
+This is a required layer, not a nicety: a single committed key on a public repo is scraped in
+minutes.
+
 ```bash
-brew install gitleaks
-# per-repo hook:
-printf '#!/bin/sh\ngitleaks protect --staged --verbose\n' > .git/hooks/pre-commit
+brew install gitleaks     # the kit installer does this for you
+```
+
+**Enforcement is agent-side, by rule (see Procedure step 0) — not a global git hook.**
+Optional per-repo hook for commits made outside an agent session:
+```bash
+printf '#!/bin/sh\ngitleaks git --staged --no-banner --redact --verbose\n' > .git/hooks/pre-commit
 chmod +x .git/hooks/pre-commit
 ```
+Run that in each repo you want gated. **Never** set `git config --global core.hooksPath` to
+force it everywhere: it overrides every repo's own hooks and silently breaks husky/lefthook
+setups in unrelated projects.
 
 ## Procedure
 
+0. **Before every `git commit`, scan staged changes:**
+   ```bash
+   gitleaks git --staged --no-banner --redact --verbose
+   ```
+   Exit 1 = a secret is staged. **Stop.** Do not commit, do not `--no-verify`. Unstage
+   the file, replace the literal with an env var reference, then re-scan. Report the finding
+   uncompressed (Auto-Clarity). Only a confirmed false positive is allowed past, and only via
+   an explicit `.gitleaksignore` entry — never by skipping the scan.
 1. Install both plugins (above); restart or `/reload-plugins`.
 2. **security-guidance** needs nothing further — it reviews edits as Claude writes them and
    fixes findings in the same session.
@@ -64,8 +83,16 @@ chmod +x .git/hooks/pre-commit
   Claude writes; pre-existing code needs `/claude-security`.
 - **Old Python.** Below 3.10, security-guidance silently degrades to single-shot review —
   check the one-time notice.
-- **Skipping the secrets layer.** Vulnerability patterns ≠ leaked credentials; the gitleaks
-  hook is one line and catches what the plugins don't target.
+- **Skipping the secrets layer.** Vulnerability patterns ≠ leaked credentials. gitleaks is the
+  only layer that catches a pasted API key.
+- **`gitleaks protect` / `gitleaks detect` — REMOVED in gitleaks 8.x.** They do not error; on
+  8.30 `protect --staged` prints `0 commits scanned … no leaks found` and exits 0, so a planted
+  AWS key sails through and the gate silently passes everything. Commands are now `git`, `dir`,
+  `stdin` — always `gitleaks git --staged` for pre-commit. Verify any hook with a planted key.
+- **Canonical example keys are allowlisted.** `AKIAIOSFODNN7EXAMPLE` is ignored by the default
+  config — test with a realistic-looking key or you'll "prove" a broken gate works.
+- **Global `core.hooksPath`.** Breaks other repos' hook setups; gate per-repo or rely on the
+  agent-side rule.
 - **Caveman interaction:** security warnings already auto-drop compression (Caveman's
   Auto-Clarity rule) — never compress or truncate plugin findings.
 
@@ -76,3 +103,8 @@ chmod +x .git/hooks/pre-commit
 - claude-security: `/claude-security` on a repo produces findings or a clean report plus
   `CLAUDE-SECURITY-RESULTS.sarif`.
 - If gitleaks hook installed: staging a fake AWS key blocks the commit.
+- `gitleaks git --staged` on a repo with a planted `AKIA…` key exits 1 and names the file,
+  line, and rule. **Test the hook with a real-looking key — a broken command exits 0 and looks
+  identical to "clean".**
+- `--no-verify` removed as an option: it defeats the hook; the agent-side rule (step 0) is the
+  real gate.

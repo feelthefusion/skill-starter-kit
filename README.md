@@ -19,7 +19,7 @@ security gate.
 | 5 | **LSP Plugins** | skill | Wires the language server (LSP) for your backend stack via Anthropic's **official** per-language LSP plugins (`typescript-lsp`, `pyright-lsp`, `gopls-lsp`, …) — plugin wires the connection, you install the server binary. Manual per-stack path for non-Claude-Code hosts. |
 | 6 | **GitHub MCP** | skill → official server | Points at GitHub's **official** `github/github-mcp-server` (remote `https://api.githubcopilot.com/mcp/` or local) for issues, PRs, reviews, branches, actions, and security — not a hand-rolled `gh` driver. |
 | 7 | **Caveman** | skills (`caveman*`) | Ultra-compressed response mode (`/caveman`, `/caveman-commit`, `/caveman-review`, `/caveman-compress`, `/caveman-help`, `/caveman-stats`). Cuts token usage by compressing communication while keeping technical accuracy; auto-drops for security/destructive/ambiguous cases. |
-| 8 | **Security Gate** | skill → official plugins | Anthropic's **official** security plugins: `security-guidance` (reviews each file edit in-session for injection/deserialization/DOM risks) + `claude-security` (on-demand multi-agent deep scan, CWE-classified, SARIF output). Optional gitleaks pre-commit hook for literal secrets. |
+| 8 | **Security Gate** | skill → official plugins + gitleaks | Three layers: `security-guidance` (official — reviews each file edit in-session for injection/deserialization/DOM risks), `claude-security` (official — on-demand multi-agent deep scan, CWE-classified, SARIF output), and **gitleaks** for literal credentials in staged diffs (~170 rules) enforced by an agent-side pre-commit rule. |
 
 ## Quick start (fresh device)
 

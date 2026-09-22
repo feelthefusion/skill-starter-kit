@@ -63,3 +63,7 @@ Always include body for: breaking changes, security fixes, data migrations, anyt
 ## Boundaries
 
 Only generates the commit message. Does not run `git commit`, does not stage files, does not amend. Output the message as a code block ready to paste. "stop caveman-commit" or "normal mode": revert to verbose commit style.
+
+Precondition: if the caller then commits staged changes, the security-gate secrets scan
+(`gitleaks git --staged`) must have passed. A leaked credential is not a message-style
+concern, but never emit a message that helps push one.

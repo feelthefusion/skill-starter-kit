@@ -163,10 +163,16 @@ with open(p, "w") as f:
 print("  · official Anthropic marketplace + security plugins registered ✓")
 PY
 # optional secrets layer
+# 8b. gitleaks — literal-secrets layer (the plugins cover patterns, not credentials)
 if command -v gitleaks >/dev/null 2>&1; then
-    echo "  · gitleaks present ✓ (add per-repo pre-commit hook — see security-gate skill)"
+    echo "  · gitleaks $(gitleaks version 2>/dev/null || echo present) ✓"
+elif command -v brew >/dev/null 2>&1; then
+    echo "  · installing gitleaks (secrets scanner) …"
+    brew install gitleaks >/dev/null 2>&1 \
+        && echo "  · gitleaks installed ✓" \
+        || echo "  ⚠ brew install gitleaks failed — install manually: brew install gitleaks"
 else
-    echo "  · gitleaks not installed (optional secrets pre-commit layer): brew install gitleaks"
+    echo "  ⚠ gitleaks missing and no brew — see https://github.com/gitleaks/gitleaks#installing"
 fi
 
 # --- 6 helper: LSP prereq note (LSPs install per-stack at runtime) -----------

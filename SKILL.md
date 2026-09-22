@@ -28,7 +28,7 @@ Don't use for:
 | 5 | LSP Plugins   | skill     | official Anthropic LSP plugins (typescript-lsp, pyright-lsp, …) + server binaries |
 | 6 | GitHub MCP    | skill     | OFFICIAL github/github-mcp-server for issues, PRs, branches |
 | 7 | Caveman       | skills    | caveman* — ultra-compressed response mode (communication compress) |
-| 8 | Security Gate | skill +   | OFFICIAL security-guidance + claude-security plugins; optional gitleaks hook |
+| 8 | Security Gate | skill +   | official security-guidance + claude-security plugins, gitleaks secrets scan |
 
 > **GSD was removed** from the kit — Superpowers already provides sub-agent-driven context
 > triage, so a separate GSD was redundant.
