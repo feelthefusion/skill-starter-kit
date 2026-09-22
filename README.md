@@ -18,22 +18,31 @@ context-triage sub-agents, per-stack language servers, and GitHub tooling.
 
 ## Quick start (fresh device)
 
+### Claude Code
 ```bash
 git clone https://github.com/feelthefusion/skill-starter-kit.git
 cd skill-starter-kit
 bash install/install.sh
 ```
+Then inside Claude Code: `/plugin install superpowers@superpowers-marketplace` and
+`/plugin install supermemory@supermemory-plugins`, and restart.
 
-Then inside Claude Code, finalize the two plugins and restart the session:
-
+### Hermes
+```bash
+git clone https://github.com/feelthefusion/skill-starter-kit.git
+cd skill-starter-kit
+bash install/hermes.sh          # installs the portable skills + recall skill into ~/.hermes/skills/
 ```
-/plugin install superpowers@superpowers-marketplace
-/plugin install supermemory@supermemory-plugins
-```
+Then open a **new Hermes session** and say **"set up the skill starter kit"**. (Hermes's
+skill index loads at session start, so a new session is required.)
 
-The installer is **idempotent** — safe to re-run. See `/install/install.sh` for details;
-the `SKILL.md` at the repo root is the recall skill that itself knows how to run all of this
-(load it via "recall the starter kit / new machine setup").
+> On Hermes, the portable skills (Graphify, Taste, GSD, LSP, GitHub MCP) install directly.
+> Superpowers is a Claude Code plugin with no Hermes equivalent; Supermemory's local server
+> is installable separately via its own installer.
+
+The installers are **idempotent** — safe to re-run. See `/install/install.sh` (Claude Code)
+and `/install/hermes.sh` (Hermes); the `SKILL.md` at the repo root is the recall skill that
+itself knows how to run all of this.
 
 ## Requirements
 - macOS or Linux (launchd auto-start is macOS-only; Linux runs `supermemory-server` manually)
@@ -44,12 +53,7 @@ the `SKILL.md` at the repo root is the recall skill that itself knows how to run
 ```
 ├── SKILL.md            # recall skill — installs/loads the whole kit
 ├── install/
-│   └── install.sh      # idempotent bootstrap for a fresh device
-└── skills/             # the portable skill files (copied to ~/.claude/skills/)
-    ├── graphify/
-    ├── taste-skill/
-    ├── taste-code/
-    ├── gsd/
-    ├── lsp-plugins/
-    └── github-mcp/
+│   ├── install.sh      # idempotent bootstrap for Claude Code (fresh device)
+│   └── hermes.sh       # idempotent bootstrap for Hermes (~/.hermes/skills/)
+└── skills/             # the portable skill files (copied to ~/.claude/skills/ or ~/.hermes/skills/)
 ```
