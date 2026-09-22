@@ -11,8 +11,14 @@ set -euo pipefail
 
 step() { printf '\n── %s ───────────────────────────────\n' "$1"; }
 
-step "install from lockfile"        # security-gate layer 5 — test what will ship
-npm ci --ignore-scripts             # or: uv sync --locked / pnpm install --frozen-lockfile / cargo fetch --locked
+step "dependencies match the lockfile"   # security-gate layer 5 — test what will ship
+# A CLEAN install only when the lockfile changed (or in CI): `npm ci` deletes node_modules first,
+# so running it on every Stop hook races dev servers and mid-task commands.
+if [ -n "${CI:-}" ] || [ ! -d node_modules ] || [ package-lock.json -nt node_modules/.package-lock.json ]; then
+  npm ci --ignore-scripts           # or: pnpm install --frozen-lockfile / uv sync --locked / cargo fetch --locked
+else
+  echo "node_modules up to date with package-lock.json (CI=1 forces a clean install)"
+fi
 
 step "typecheck"
 npm run typecheck                   # or: mypy . / tsc --noEmit / go vet ./... / cargo check
@@ -27,7 +33,11 @@ step "build"
 npm run build                       # or: go build ./... / cargo build --release
 
 step "dependency audit"             # security-gate layer 4: CVEs + known-malicious (MAL-*) packages
-osv-scanner scan source -r .
+if curl -sS -m 4 -o /dev/null https://api.osv.dev/ 2>/dev/null || [ -n "${CI:-}" ]; then
+  osv-scanner scan source -r .
+else                                # a sandboxed hook has no network: skip VISIBLY, never `|| true`
+  echo "⚠ dependency audit skipped: no network here (sandboxed hook). Runs in CI and when verify has network."
+fi
 
 if [ -d .github/workflows ]; then
   step "github actions lint"        # security-gate layer 5

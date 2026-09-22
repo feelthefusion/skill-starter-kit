@@ -20,10 +20,28 @@ elif [ -f package.json ] && grep -q '"verify"' package.json;      then v="npm ru
 elif [ -f Makefile ]     && grep -q '^verify:' Makefile;          then v="make verify"
 else exit 0; fi                                                   # no gate defined here
 
-# only gate turns that touched files: cheap signal = git has changes vs HEAD or untracked
-if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  if [ -z "$(git status --porcelain 2>/dev/null)" ]; then exit 0; fi
-fi
+# Gate only sessions that actually edited files. Source of truth: the session transcript
+# (tool_use of Edit/Write/MultiEdit/NotebookEdit). Fallback when no transcript: git has changes.
+edited="$(printf '%s' "$payload" | python3 -c '
+import sys, json
+d = json.load(sys.stdin); p = d.get("transcript_path")
+if not p: print("unknown"); sys.exit()
+names = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
+try:
+    for line in open(p, encoding="utf-8", errors="ignore"):
+        if "tool_use" not in line: continue
+        try: m = json.loads(line)
+        except Exception: continue
+        c = (m.get("message") or {}).get("content") or []
+        if any(isinstance(b, dict) and b.get("type") == "tool_use" and b.get("name") in names for b in c):
+            print("yes"); sys.exit()
+    print("no")
+except FileNotFoundError:
+    print("unknown")' 2>/dev/null || echo unknown)"
+case "$edited" in
+  no) exit 0 ;;
+  unknown) git rev-parse --is-inside-work-tree >/dev/null 2>&1 && [ -z "$(git status --porcelain 2>/dev/null)" ] && exit 0 ;;
+esac
 
 out="$($v 2>&1)"; rc=$?
 if [ $rc -eq 0 ]; then exit 0; fi

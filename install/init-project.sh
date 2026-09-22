@@ -90,7 +90,11 @@ if has("package.json"):
     pm = "pnpm" if has("pnpm-lock.yaml") else "yarn" if has("yarn.lock") else "bun" if (has("bun.lock") or has("bun.lockb")) else "npm"
     run = {"npm": "npm run", "pnpm": "pnpm", "yarn": "yarn", "bun": "bun run"}[pm]
     install = {"npm": "npm ci --prefer-offline", "pnpm": "pnpm install --frozen-lockfile", "yarn": "yarn install --immutable", "bun": "bun install --frozen-lockfile"}[pm]
-    steps.append(("install from lockfile", install, "security-gate layer 5 — test what will ship"))
+    lockfile = {"npm": "package-lock.json", "pnpm": "pnpm-lock.yaml", "yarn": "yarn.lock", "bun": "bun.lock"}[pm]
+    stamp = "node_modules/.package-lock.json" if pm == "npm" else "node_modules/.modules.yaml" if pm == "pnpm" else "node_modules/.yarn-state.yml" if pm == "yarn" else "node_modules/.bun-tag" if False else "node_modules"
+    steps.append(("dependencies match the lockfile",
+        f'if [ -n "${{CI:-}}" ] || [ ! -d node_modules ] || [ {lockfile} -nt {stamp} ]; then {install}; else echo "node_modules up to date with {lockfile} (set CI=1 to force a clean install)"; fi',
+        "security-gate layer 5. A clean install only when the lockfile changed: `npm ci` deletes node_modules, so running it every turn races dev servers"))
     for name, label in (("typecheck", "typecheck"), ("check", "typecheck"), ("tsc", "typecheck")):
         if name in s: steps.append((label, f"{run} {name}", "")); break
     else:
@@ -100,7 +104,7 @@ if has("package.json"):
     if "test" in s and "no test specified" not in s["test"]: steps.append(("test", f"{run} test", ""))
     if "build" in s: steps.append(("build", f"{run} build", ""))
 elif has("pyproject.toml") or has("requirements.txt"):
-    if has("uv.lock"): steps.append(("install from lockfile", "uv sync --locked", "security-gate layer 5"))
+    if has("uv.lock"): steps.append(("dependencies match the lockfile", "uv sync --locked", "security-gate layer 5 (idempotent, fast)"))
     py = "uv run " if has("uv.lock") else ""
     if has("pyproject.toml") and re.search(r"\[tool\.ruff", open(os.path.join(dest, "pyproject.toml")).read()): steps.append(("lint", f"{py}ruff check .", ""))
     if any(has(d) for d in ("tests", "test")) or has("pytest.ini"): steps.append(("test", f"{py}pytest -q", ""))
@@ -117,7 +121,11 @@ out = ["#!/usr/bin/env bash",
 for label, cmd, why in steps:
     out += [f'step "{label}"' + (f"        # {why}" if why else ""), cmd, ""]
 out += ['step "dependency audit"             # security-gate layer 4: CVEs + known-malicious (MAL-*) packages',
-        "osv-scanner scan source -r .", "",
+        "if curl -sS -m 4 -o /dev/null https://api.osv.dev/ 2>/dev/null || [ -n \"${CI:-}\" ]; then",
+        "  osv-scanner scan source -r .",
+        "else",
+        "  echo '⚠ dependency audit skipped: no network here (sandboxed hook). It runs in CI and whenever verify runs with network.'",
+        "fi", "",
         "if [ -d .github/workflows ]; then",
         '  step "github actions lint"        # security-gate layer 5',
         "  uvx zizmor --min-severity medium .github/workflows", "fi", "",
