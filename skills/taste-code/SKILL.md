@@ -38,6 +38,15 @@ Think of it as taste filters applied to every code block you produce.
 10. **Right-sized formatting.** Match the surrounding file's conventions. No reformatting
     hunks you didn't change, no blowing up style just to look organized.
 
+## Spikes: validate outside the repo
+
+When an idea is risky or unproven (unfamiliar API, uncertain algorithm, "will this even
+work?"), spike it first: write the throwaway experiment in a scratch directory OUTSIDE the
+repo (e.g. `$TMPDIR/spike-<name>`), prove or kill the idea, then delete it. Only the
+*lesson* comes back into the repo, as the smallest correct implementation (rule 1).
+Never commit spike code, never "clean up a spike into production" — rewrite from what you
+learned. This is rule 4 applied to process: no speculative code in the tree.
+
 ## When to Use
 - Every code generation request, unless the user explicitly asks for maximal scaffolding.
 - Code review passes: check output against these rules before presenting it.

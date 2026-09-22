@@ -10,36 +10,39 @@
 #   4. Taste-Skill       skills (taste-code + taste-skill)  [copied]
 #   5. LSP Plugins       skill (copied) — installs LSP per stack at runtime
 #   6. GitHub MCP        skill (copied) — official github/github-mcp-server (issues/PRs/branches)
-#   +  Caveman           skills (caveman*) — response-compression layer
+#   7. Caveman           skills (caveman*) — response-compression layer
+#   8. Security Gate     skill (copied) + OFFICIAL Anthropic plugins (security-guidance + claude-security)
 #
-# Idempotent: safe to re-run; will not clobber existing files.
+# LIVE BY DESIGN: pulls the kit from GitHub before installing, and REFRESHES
+# already-installed skills instead of skipping them. Re-run it any time to update.
+# Env: KIT_NO_PULL=1 to install the local copy without pulling.
 # =============================================================================
 set -euo pipefail
 
-KIT_SKILLS_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/skills"
+KIT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=install/lib.sh
+source "$KIT_ROOT/install/lib.sh"
+KIT_SKILLS_SRC="$KIT_ROOT/skills"
 CLAUDE_SKILLS_DIR="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
 CLAUDE_SETTINGS="$HOME/.claude/settings.json"
 
 echo "── New Project Skill Starter Kit ─────────────────────────"
+
+# --- 0: pull the latest kit before installing anything ----------------------
+kit_self_update "$KIT_ROOT"
 
 # --- Common prereqs ---------------------------------------------------------
 echo "▶ checking prereqs …"
 command -v node >/dev/null 2>&1 || { echo "✗ node missing (required by Claude Code + Supermemory)"; exit 1; }
 echo "✓ node $(node --version)"
 
-# --- 1,4,5,6,7: skills are copied into ~/.claude/skills --------------------
-echo "▶ installing skills into $CLAUDE_SKILLS_DIR"
+# --- 1,4,5,6,7,8: skills are synced into ~/.claude/skills -------------------
+echo "▶ syncing skills into $CLAUDE_SKILLS_DIR"
 mkdir -p "$CLAUDE_SKILLS_DIR"
-for skill in graphify taste-skill taste-code caveman caveman-commit caveman-compress caveman-help caveman-review caveman-stats lsp-plugins github-mcp; do
-    if [ -d "$CLAUDE_SKILLS_DIR/$skill" ]; then
-        echo "  · $skill already present — skipping"
-    elif [ -d "$KIT_SKILLS_SRC/$skill" ]; then
-        cp -R "$KIT_SKILLS_SRC/$skill" "$CLAUDE_SKILLS_DIR/"
-        echo "  · $skill installed ✓"
-    else
-        echo "  · $skill not found in kit (source missing) — skipped"
-    fi
+for skill in graphify taste-skill taste-code caveman caveman-commit caveman-compress caveman-help caveman-review caveman-stats lsp-plugins github-mcp security-gate; do
+    sync_skill "$KIT_SKILLS_SRC/$skill" "$CLAUDE_SKILLS_DIR/$skill"
 done
+write_kit_version "$KIT_ROOT" "$CLAUDE_SKILLS_DIR"
 
 # --- 2: Superpowers plugin ---------------------------------------------------
 # Plugin marketplaces are added inside Claude Code with /plugin, but we can
@@ -49,6 +52,7 @@ if command -v jq >/dev/null 2>&1 && command -v node >/dev/null 2>&1; then
     python3 - "$CLAUDE_SETTINGS" <<'PY'
 import json, sys, os
 p = sys.argv[1]
+os.makedirs(os.path.dirname(p) or ".", exist_ok=True)
 data = {}
 if os.path.exists(p):
     with open(p) as f: data = json.load(f)
@@ -72,6 +76,7 @@ echo "▶ Supermemory — plugin + LOCAL self-hosted server"
 python3 - "$CLAUDE_SETTINGS" <<'PY'
 import json, sys, os
 p = sys.argv[1]
+os.makedirs(os.path.dirname(p) or ".", exist_ok=True)
 data = {}
 if os.path.exists(p):
     with open(p) as f: data = json.load(f)
@@ -85,15 +90,18 @@ with open(p, "w") as f:
 print("  · supermemory plugin marketplace registered ✓")
 PY
 
-# 3b. install local server binary (self-contained, no Docker)
-echo "▶ installing supermemory local server"
-if [ -x "$HOME/.local/bin/supermemory-server" ]; then
-    echo "  · supermemory-server already present — skipping"
+# 3b. install/update local server binary (self-contained, no Docker)
+# The upstream installer is the live source — re-run it every time so the binary
+# tracks the latest release rather than whatever was first installed.
+echo "▶ installing/updating supermemory local server (latest from supermemory.ai)"
+if curl -fsSL https://supermemory.ai/install | bash; then
+    echo "  · supermemory-server at latest ✓"
 else
-    echo "  · downloading installer …"
-    curl -fsSL https://supermemory.ai/install | bash || {
-        echo "  ⚠ installer failed (network?) — re-run later or install from https://supermemory.ai/install"
-    }
+    if [ -x "$HOME/.local/bin/supermemory-server" ]; then
+        echo "  ⚠ update failed (network?) — keeping existing binary"
+    else
+        echo "  ⚠ install failed (network?) — re-run later or see https://supermemory.ai/install"
+    fi
 fi
 
 # 3c. launchd auto-start (macOS) — server runs at login
@@ -134,6 +142,33 @@ else
     echo "  · no supermemory api-key yet — start server once (first run prints key), then re-run install"
 fi
 
+# --- 8: Security Gate — official Anthropic security plugins -------------------
+echo "▶ configuring Security Gate (official Anthropic security plugins)"
+python3 - "$CLAUDE_SETTINGS" <<'PY'
+import json, sys, os
+p = sys.argv[1]
+os.makedirs(os.path.dirname(p) or ".", exist_ok=True)
+data = {}
+if os.path.exists(p):
+    with open(p) as f: data = json.load(f)
+data.setdefault("extraKnownMarketplaces", {})["claude-plugins-official"] = {
+    "source": {"source": "github", "repo": "anthropics/claude-plugins-official"}
+}
+plugins = data.setdefault("enabledPlugins", {})
+plugins["security-guidance@claude-plugins-official"] = True
+plugins["claude-security@claude-plugins-official"] = True
+with open(p, "w") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+print("  · official Anthropic marketplace + security plugins registered ✓")
+PY
+# optional secrets layer
+if command -v gitleaks >/dev/null 2>&1; then
+    echo "  · gitleaks present ✓ (add per-repo pre-commit hook — see security-gate skill)"
+else
+    echo "  · gitleaks not installed (optional secrets pre-commit layer): brew install gitleaks"
+fi
+
 # --- 6 helper: LSP prereq note (LSPs install per-stack at runtime) -----------
 echo "▶ LSP note: language servers install on demand per stack (see skill lsp-plugins)"
 
@@ -148,6 +183,13 @@ else
 fi
 
 echo "─── done ───────────────────────────────────────────────"
+echo "Plugins track GitHub automatically: marketplaces are registered by repo, so"
+echo "Claude Code fetches the latest from origin — no pinned versions in this kit."
 echo "Next: inside Claude Code run  /plugin install superpowers@superpowers-marketplace"
 echo "                               /plugin install supermemory@supermemory-plugins"
-echo "      then restart the session so skills + hooks load."
+echo "                               /plugin install security-guidance@claude-plugins-official"
+echo "                               /plugin install claude-security@claude-plugins-official"
+echo "      then restart the session (or /reload-plugins) so skills + hooks load."
+echo
+echo "To update everything later, just re-run this installer — it pulls the kit"
+echo "from GitHub and refreshes every installed skill in place."

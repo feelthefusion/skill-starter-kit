@@ -27,7 +27,26 @@ Don't use for:
   available (npm/pnpm/yarn, go, pip/uv, cargo).
 - The editor/agent is wired to run the LSP server over the standard JSON-RPC/LSP protocol.
 
-## Quick Reference (server per stack)
+## Preferred Path: Official Anthropic LSP Plugins (Claude Code)
+
+Anthropic ships first-party per-language LSP plugins in the official marketplace — use these
+before hand-wiring servers. In a Claude Code session:
+```
+/plugin install typescript-lsp@claude-plugins-official   # TypeScript/JS
+/plugin install pyright-lsp@claude-plugins-official      # Python
+/plugin install gopls-lsp@claude-plugins-official        # Go
+/plugin install rust-analyzer-lsp@claude-plugins-official # Rust
+/plugin install clangd-lsp@claude-plugins-official       # C/C++
+```
+If the marketplace is missing: `/plugin marketplace add anthropics/claude-plugins-official`.
+Also available: `csharp-lsp`, `jdtls-lsp`, `kotlin-lsp`, `lua-lsp`, `php-lsp`, `swift-lsp`.
+**The plugin wires the connection but does NOT install the server binary** — install the
+binary from the table below first (the plugin's LSP tool then gives automatic post-edit
+diagnostics plus navigation: definitions, references, hover types, call hierarchies).
+Cloud sessions don't start plugin language servers. Hosts without the marketplace (e.g.
+Hermes) use the manual path alone.
+
+## Server Binaries (install per stack — required for the plugins too)
 
 | Stack     | Server (package)                         | Install (per-project)          |
 |-----------|------------------------------------------|--------------------------------|
@@ -40,7 +59,8 @@ Don't use for:
 
 1. **Identify the stack.** Ask the agent or inspect for markers: `tsconfig.json` → TS; `go.mod` →
    Go; `pyproject.toml`/`requirements.txt` → Python; `Cargo.toml` → Rust. Do not guess.
-2. **Install the matching server** from the Quick Reference table.
+2. **Install the server binary** from the table, then **install the matching official
+   plugin** (Claude Code) — or run the binary alone on other hosts.
 3. **Restart** the editor/agent so the server attaches to the workspace.
 4. **Verify** the server is live (see Verification) before relying on it.
 5. **Use it** for structural queries: symbols, definitions, references, type of expression,
