@@ -1,12 +1,12 @@
 ---
 name: skill-starter-kit
-description: "Bootstrap a new local device with the skill starter kit. Recall as 'starter kit' / 'new machine setup' / 'install the kit' to install Graphify, Superpowers, Supermemory, Taste, Caveman, LSP, the official GitHub MCP, and the Security Gate."
+description: "Bootstrap a new local device with the skill starter kit. Recall as 'starter kit' / 'new machine setup' / 'install the kit' to install the 11 components: Graphify, Superpowers, Supermemory, Taste, LSP, GitHub MCP, Caveman, Security Gate, Verify Gate, Browser Verify, and Docs Freshness."
 ---
 
 # Skill Starter Kit (Recall Skill)
 
 The kit is a single command to take a fresh Claude Code machine from zero to the full
-8-component setup. This skill is the "recall" entry point: loading it tells you exactly how
+11-component setup. This skill is the "recall" entry point: loading it tells you exactly how
 to install the kit on any device — this one or a brand-new one.
 
 ## When to Use
@@ -21,17 +21,21 @@ Don't use for:
 ## The Components
 | # | Name          | Kind      | Source                                                   |
 |---|---------------|-----------|----------------------------------------------------------|
-| 1 | Graphify      | skill     | Karpathy-style codebase → knowledge graph                |
-| 2 | Superpowers   | plugin    | obra/superpowers-marketplace (owns sub-agent orchestration; bundles systematic-debugging + TDD skills) |
+| 1 | Graphify      | skill     | ON-DEMAND orientation in a large unfamiliar repo / non-code corpora. NOT the default retrieval path |
+| 2 | Superpowers   | plugin    | obra/superpowers-marketplace — owns workflow + sub-agent orchestration; bundles 15 skills incl. systematic-debugging, TDD, code-review, worktrees |
 | 3 | Supermemory   | plugin +  | supermemoryai/claude-supermemory + LOCAL server (6767)   |
-| 4 | Taste-Skill   | skills    | taste-code + taste-skill (anti-slop; incl. spike rule)   |
-| 5 | LSP Plugins   | skill     | official Anthropic LSP plugins (typescript-lsp, pyright-lsp, …) + server binaries |
-| 6 | GitHub MCP    | skill     | OFFICIAL github/github-mcp-server for issues, PRs, branches |
-| 7 | Caveman       | skills    | caveman* — ultra-compressed response mode (communication compress) |
-| 8 | Security Gate | skill +   | official security-guidance + claude-security plugins, gitleaks secrets scan |
+| 4 | Taste-Skill   | skills    | taste-code + taste-skill (anti-slop; spike rule; reviewer-findings rule) |
+| 5 | LSP Plugins   | skill     | official Anthropic LSP plugins — 13 languages, install PER-STACK only |
+| 6 | GitHub MCP    | skill     | OFFICIAL github/github-mcp-server — read-only + per-project by default |
+| 7 | Caveman       | skills    | caveman* — OPT-IN compression of final summaries only, never verification output |
+| 8 | Security Gate | skill +   | security-guidance + claude-security + gitleaks (secrets) + osv-scanner (deps) |
+| 9 | **Verify Gate** | skill + | one `verify` command + Stop hook + evidence discipline. The ONLY component that blocks a false "done" |
+| 10 | **Browser Verify** | skill + | playwright + chrome-devtools-mcp: screenshot-compare loop, smoke E2E, console/network debugging |
+| 11 | **Docs Freshness** | skill + | `--help` → installed source → llms.txt → context7 ladder; verify a package exists before installing |
 
-> **GSD was removed** from the kit — Superpowers already provides sub-agent-driven context
-> triage, so a separate GSD was redundant.
+> **GSD was removed** — Superpowers already provides sub-agent-driven context triage.
+> **Never add** standalone systematic-debugging, TDD, code-review, or worktree skills:
+> Superpowers bundles all four. See the README's "Deliberately rejected" table.
 
 ## How to Recall / Run
 
@@ -85,14 +89,22 @@ bash install/install.sh
 6. **GitHub MCP** — registers the OFFICIAL `github/github-mcp-server` (remote
    `https://api.githubcopilot.com/mcp/` or local Docker) for issues/PRs/branches, and
    verifies `gh` auth.
-7. **Caveman** — copies the `caveman*` skills (ultra-compressed response mode: `/caveman`,
+7. **Caveman** — copies the `caveman*` skills (opt-in summary compression: `/caveman`,
    `/caveman-commit`, `/caveman-review`, `/caveman-compress`, `/caveman-help`, `/caveman-stats`).
+   No auto-trigger: it fires only when the user asks for it by name.
 8. **Security Gate** — copies the `security-gate` skill, registers the OFFICIAL
    `anthropics/claude-plugins-official` marketplace, and enables `security-guidance` (in-session
    edit review) + `claude-security` (deep scan, SARIF). Optional: `brew install gitleaks` for a
    secrets pre-commit hook. First enable:
    `/plugin install security-guidance@claude-plugins-official` and
-   `/plugin install claude-security@claude-plugins-official`.
+   `/plugin install claude-security@claude-plugins-official`. Also `brew install gitleaks
+   osv-scanner` for the two portable layers.
+9. **Verify Gate** — copies the skill + template `verify.sh`, enables `hookify`. **Do this
+   first in any new project:** copy the template, trim it to the stack's real checks, wire the
+   Stop hook. Nothing else in the kit blocks a false "done".
+10. **Browser Verify** — copies the skill, enables `playwright` + `chrome-devtools-mcp`.
+11. **Docs Freshness** — copies the skill, registers `context7` **disabled** (enable
+    per-project; a standing docs MCP is a standing context tax).
 
 ## After install (fresh device)
 1. Restart the Claude Code session so skills + hooks load.
@@ -102,13 +114,21 @@ bash install/install.sh
    /plugin install supermemory@supermemory-plugins
    /plugin install security-guidance@claude-plugins-official
    /plugin install claude-security@claude-plugins-official
+   /plugin install hookify@claude-plugins-official
+   /plugin install playwright@claude-plugins-official
+   /plugin install chrome-devtools-mcp@claude-plugins-official
    ```
+   Then **per-project, not globally**: the matching `<lang>-lsp`, `context7`, GitHub MCP.
 3. For Supermemory only: on a truly fresh device the server hasn't booted once yet,
    so start it (`supermemory-server`) once to generate the API key, then re-run the
    installer to wire env vars, then `/plugin`.
 
 ## Verification
-- `ls ~/.claude/skills/` shows graphify, taste-skill, taste-code, caveman*, lsp-plugins, github-mcp, security-gate.
+- `ls ~/.claude/skills/` shows graphify, taste-skill, taste-code, caveman*, lsp-plugins,
+  github-mcp, security-gate, verify-gate, browser-verify, docs-freshness.
+- A repo with the kit applied has an executable `verify` (script or task) that exits 0 clean and
+  names the failing check when dirty, and a Stop hook that blocks the turn on failure
+  (component 9 — test it by breaking something on purpose).
 - `cat ~/.claude/skills/.kit-version` shows the installed kit revision; it matches
   `git -C ~/skill-starter-kit rev-parse --short HEAD`.
 - `~/.claude/settings.json` has all three marketplaces under `extraKnownMarketplaces` and the

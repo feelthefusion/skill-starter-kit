@@ -3,15 +3,19 @@
 # New Project Skill Starter Kit — installer for a fresh Claude Code device
 # Usage:  bash install.sh   (or run from inside Claude Code via `/install`)
 #
-# Installs / wires all 7 kit components onto this machine:
-#   1. Graphify          skill (copied)
-#   2. Superpowers       plugin (obra/superpowers-marketplace)
+# Installs / wires all 11 kit components onto this machine:
+#   1. Graphify          skill (copied) — on-demand orientation, not the default retrieval path
+#   2. Superpowers       plugin (obra/superpowers-marketplace; also listed as
+#                        superpowers@claude-plugins-official — do NOT enable both)
 #   3. Supermemory       plugin + LOCAL self-hosted server (supermemoryai/claude-supermemory)
 #   4. Taste-Skill       skills (taste-code + taste-skill)  [copied]
 #   5. LSP Plugins       skill (copied) — installs LSP per stack at runtime
 #   6. GitHub MCP        skill (copied) — official github/github-mcp-server (issues/PRs/branches)
-#   7. Caveman           skills (caveman*) — response-compression layer
-#   8. Security Gate     skill (copied) + OFFICIAL Anthropic plugins (security-guidance + claude-security)
+#   7. Caveman           skills (caveman*) — opt-in summary compression, NOT auto-triggered
+#   8. Security Gate     skill (copied) + OFFICIAL Anthropic plugins (security-guidance + claude-security) + gitleaks + osv-scanner
+#   9. Verify Gate       skill (copied) + hookify plugin — the pass/fail completion gate
+#  10. Browser Verify    skill (copied) + playwright + chrome-devtools-mcp plugins
+#  11. Docs Freshness    skill (copied) + context7 plugin (per-project)
 #
 # LIVE BY DESIGN: pulls the kit from GitHub before installing, and REFRESHES
 # already-installed skills instead of skipping them. Re-run it any time to update.
@@ -39,7 +43,7 @@ echo "✓ node $(node --version)"
 # --- 1,4,5,6,7,8: skills are synced into ~/.claude/skills -------------------
 echo "▶ syncing skills into $CLAUDE_SKILLS_DIR"
 mkdir -p "$CLAUDE_SKILLS_DIR"
-for skill in graphify taste-skill taste-code caveman caveman-commit caveman-compress caveman-help caveman-review caveman-stats lsp-plugins github-mcp security-gate; do
+for skill in graphify taste-skill taste-code caveman caveman-commit caveman-compress caveman-help caveman-review caveman-stats lsp-plugins github-mcp security-gate verify-gate browser-verify docs-freshness; do
     sync_skill "$KIT_SKILLS_SRC/$skill" "$CLAUDE_SKILLS_DIR/$skill"
 done
 write_kit_version "$KIT_ROOT" "$CLAUDE_SKILLS_DIR"
@@ -175,6 +179,48 @@ else
     echo "  ⚠ gitleaks missing and no brew — see https://github.com/gitleaks/gitleaks#installing"
 fi
 
+# 8c. osv-scanner — dependency-tree layer (layer 4: the code you INSTALLED)
+if command -v osv-scanner >/dev/null 2>&1; then
+    echo "  · osv-scanner present ✓"
+elif command -v brew >/dev/null 2>&1; then
+    echo "  · installing osv-scanner (dependency/supply-chain scanner) …"
+    brew install osv-scanner >/dev/null 2>&1 \
+        && echo "  · osv-scanner installed ✓" \
+        || echo "  ⚠ brew install osv-scanner failed — install manually: brew install osv-scanner"
+else
+    echo "  ⚠ osv-scanner missing and no brew — see https://github.com/google/osv-scanner"
+fi
+
+# --- 9,10,11: Verify Gate / Browser Verify / Docs Freshness plugins ----------
+# All four live in the OFFICIAL Anthropic marketplace (registered above).
+#   hookify            → generates the Stop hook that runs `verify` (component 9)
+#   playwright         → drive + assert + screenshot (component 10)
+#   chrome-devtools-mcp→ console/network/DOM/perf inspection (component 10)
+#   context7           → version-specific library docs (component 11)
+# context7 is registered but left DISABLED: a standing docs MCP is a standing
+# context tax, so enable it per-project rather than globally.
+echo "▶ configuring Verify Gate + Browser Verify + Docs Freshness plugins"
+python3 - "$CLAUDE_SETTINGS" <<'PY'
+import json, sys, os
+p = sys.argv[1]
+os.makedirs(os.path.dirname(p) or ".", exist_ok=True)
+data = {}
+if os.path.exists(p):
+    with open(p) as f: data = json.load(f)
+data.setdefault("extraKnownMarketplaces", {})["claude-plugins-official"] = {
+    "source": {"source": "github", "repo": "anthropics/claude-plugins-official"}
+}
+plugins = data.setdefault("enabledPlugins", {})
+for name in ("hookify", "playwright", "chrome-devtools-mcp"):
+    plugins[f"{name}@claude-plugins-official"] = True
+plugins.setdefault("context7@claude-plugins-official", False)
+with open(p, "w") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+print("  · hookify + playwright + chrome-devtools-mcp enabled ✓")
+print("  · context7 registered but DISABLED — enable per-project (docs-freshness skill)")
+PY
+
 # --- 6 helper: LSP prereq note (LSPs install per-stack at runtime) -----------
 echo "▶ LSP note: language servers install on demand per stack (see skill lsp-plugins)"
 
@@ -195,7 +241,17 @@ echo "Next: inside Claude Code run  /plugin install superpowers@superpowers-mark
 echo "                               /plugin install supermemory@supermemory-plugins"
 echo "                               /plugin install security-guidance@claude-plugins-official"
 echo "                               /plugin install claude-security@claude-plugins-official"
+echo "                               /plugin install hookify@claude-plugins-official"
+echo "                               /plugin install playwright@claude-plugins-official"
+echo "                               /plugin install chrome-devtools-mcp@claude-plugins-official"
 echo "      then restart the session (or /reload-plugins) so skills + hooks load."
+echo
+echo "FIRST THING in a new project: define a \`verify\` command and wire the Stop hook"
+echo "(skill verify-gate, template skills/verify-gate/templates/verify.sh). Nothing else"
+echo "in the kit blocks a false 'done'."
+echo
+echo "Per-project, not global:  context7 (docs MCP), the matching <lang>-lsp plugin,"
+echo "and GitHub MCP. Each costs context in every session it is enabled."
 echo
 echo "To update everything later, just re-run this installer — it pulls the kit"
 echo "from GitHub and refreshes every installed skill in place."
