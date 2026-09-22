@@ -1,4 +1,4 @@
-# New Project Skill Starter Kit
+# Skill Starter Kit
 
 One command to bootstrap a fresh Claude Code machine with all 7 starter skills:
 multi-session memory, a structured workflow, codebase knowledge graphs, anti-slop taste,
