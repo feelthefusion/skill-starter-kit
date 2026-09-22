@@ -10,6 +10,7 @@
 #   4. Taste-Skill       skills (taste-code + taste-skill)  [copied]
 #   5. LSP Plugins       skill (copied) — installs LSP per stack at runtime
 #   6. GitHub MCP        skill (copied) — official github/github-mcp-server (issues/PRs/branches)
+#   +  Caveman           skills (caveman*) — response-compression layer
 #
 # Idempotent: safe to re-run; will not clobber existing files.
 # =============================================================================
@@ -29,7 +30,7 @@ echo "✓ node $(node --version)"
 # --- 1,4,5,6,7: skills are copied into ~/.claude/skills --------------------
 echo "▶ installing skills into $CLAUDE_SKILLS_DIR"
 mkdir -p "$CLAUDE_SKILLS_DIR"
-for skill in graphify taste-skill taste-code lsp-plugins github-mcp; do
+for skill in graphify taste-skill taste-code caveman caveman-commit caveman-compress caveman-help caveman-review caveman-stats lsp-plugins github-mcp; do
     if [ -d "$CLAUDE_SKILLS_DIR/$skill" ]; then
         echo "  · $skill already present — skipping"
     elif [ -d "$KIT_SKILLS_SRC/$skill" ]; then

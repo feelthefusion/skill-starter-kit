@@ -10,6 +10,7 @@
 #   3. Supermemory (local server still installable — see note)  4. Taste
 #   5. LSP Plugins       skill (copied) — installs LSP per stack at runtime
 #   6. GitHub MCP        skill (copied) — official github/github-mcp-server via gh
+#   +  Caveman           skills (caveman*) — response-compression layer
 #
 # Idempotent: re-run safe.
 # =============================================================================
@@ -29,7 +30,7 @@ mkdir -p "$HERMES_SKILLS_DIR/$CATEGORY"
 
 # --- portable skills: graphify, taste-skill, taste-code, lsp-plugins, github-mcp
 #     (Superpowers is a Claude Code plugin marketplace -> no Hermes equivalent here.)
-for skill in graphify taste-skill taste-code lsp-plugins github-mcp; do
+for skill in graphify taste-skill taste-code caveman caveman-commit caveman-compress caveman-help caveman-review caveman-stats lsp-plugins github-mcp; do
     if [ -d "$HERMES_SKILLS_DIR/$CATEGORY/$skill" ]; then
         echo "  · $skill  already installed — skipping"
     elif [ -d "$KIT_SKILLS_SRC/$skill" ]; then
@@ -69,8 +70,9 @@ Recalled when the user asks to set up a new device, reproduce their environment,
 4. Taste-Skill — `taste-code` (10-rule minimalist harness) + `taste-skill` (anti-slop frontend)
 5. LSP Plugins — per-stack language server
 6. GitHub MCP — official github/github-mcp-server (issues/PRs/branches)
+7. Caveman — ultra-compressed response mode (`/caveman`, `/caveman-commit`, `/caveman-review`, `/caveman-compress`, `/caveman-help`, `/caveman-stats`)
 
-On Hermes, the portable skills (1,4,5,6) install directly here. Components 2
+On Hermes, the portable skills (1,4,5,6,7) install directly here. Components 2
 (Superpowers) is a Claude Code plugin; 3's local server can be installed separately.
 MD
     echo "  · skill-starter-kit (recall)  installed ✓"
@@ -86,6 +88,6 @@ fi
 
 echo
 echo "─── done ───────────────────────────────────────────────"
-echo "Installed skills: $(ls "$HERMES_SKILLS_DIR/$CATEGORY" | grep -E 'graphify|taste-skill|taste-code|lsp-plugins|github-mcp|skill-starter-kit' | tr '\n' ' ')"
+echo "Installed skills: $(ls "$HERMES_SKILLS_DIR/$CATEGORY" | grep -E 'graphify|taste-skill|taste-code|caveman|lsp-plugins|github-mcp|skill-starter-kit' | tr '\n' ' ')"
 echo "A NEW Hermes session is required for the skills to appear (skill index loads at session start)."
 echo "Then say:  'set up the skill starter kit' / 'recall the kit'."

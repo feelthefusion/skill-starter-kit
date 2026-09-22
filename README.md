@@ -1,11 +1,11 @@
 # Skill Starter Kit
 
 One command to bootstrap a fresh Claude Code machine with the starter stack: multi-session
-memory, a structured workflow, codebase knowledge graphs, anti-slop taste, per-stack
-language servers, and official GitHub tooling.
+memory, a structured workflow, codebase knowledge graphs, anti-slop taste, an ultra-compact
+response mode, per-stack language servers, and official GitHub tooling.
 
 > **Change to note:** **GSD was removed** — Superpowers already provides sub-agent-driven
-> context triage, so a separate skill was redundant. The kit is 6 components.
+> context triage, so a separate skill was redundant. The kit is 7 components.
 
 ## The components
 
@@ -17,6 +17,7 @@ language servers, and official GitHub tooling.
 | 4 | **Taste-Skill** | skills (`taste-code` + `taste-skill`) | Anti-slop harness: `taste-code` injects 10 minimalist structural rules against boilerplate, placeholder noise, redundant try/catch logs, and over-engineered architecture; `taste-skill` is the anti-slop frontend companion. |
 | 5 | **LSP Plugins** | skill | Wires the language server (LSP) for your backend stack (TS, Go, Python, Rust) into Claude Code's native LSP support for real static types, imports, and diagnostics. |
 | 6 | **GitHub MCP** | skill → official server | Points at GitHub's **official** `github/github-mcp-server` (remote `https://api.githubcopilot.com/mcp/` or local) for issues, PRs, reviews, branches, actions, and security — not a hand-rolled `gh` driver. |
+| 7 | **Caveman** | skills (`caveman*`) | Ultra-compressed response mode (`/caveman`, `/caveman-commit`, `/caveman-review`, `/caveman-compress`, `/caveman-help`, `/caveman-stats`). Cuts token usage by compressing communication while keeping technical accuracy; auto-drops for security/destructive/ambiguous cases. |
 
 ## Quick start (fresh device)
 
@@ -38,7 +39,7 @@ bash install/hermes.sh          # installs the portable skills + recall skill in
 Then open a **new Hermes session** and say **"set up the skill starter kit"**. (Hermes's
 skill index loads at session start, so a new session is required.)
 
-> On Hermes, the portable skills (Graphify, Taste, LSP, GitHub MCP) install directly.
+> On Hermes, the portable skills (Graphify, Taste, Caveman, LSP, GitHub MCP) install directly.
 > Superpowers is a Claude Code plugin with no Hermes equivalent; Supermemory's local server
 > is installable separately via its own installer.
 

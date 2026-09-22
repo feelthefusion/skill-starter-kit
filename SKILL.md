@@ -1,12 +1,12 @@
 ---
 name: skill-starter-kit
-description: "Bootstrap a new local device with the skill starter kit. Recall as 'starter kit' / 'new machine setup' / 'install the kit' to install Graphify, Superpowers, Supermemory, Taste, LSP, and the official GitHub MCP."
+description: "Bootstrap a new local device with the skill starter kit. Recall as 'starter kit' / 'new machine setup' / 'install the kit' to install Graphify, Superpowers, Supermemory, Taste, Caveman, LSP, and the official GitHub MCP."
 ---
 
 # Skill Starter Kit (Recall Skill)
 
 The kit is a single command to take a fresh Claude Code machine from zero to the full
-6-component setup. This skill is the "recall" entry point: loading it tells you exactly how
+7-component setup. This skill is the "recall" entry point: loading it tells you exactly how
 to install the kit on any device — this one or a brand-new one.
 
 ## When to Use
@@ -27,6 +27,7 @@ Don't use for:
 | 4 | Taste-Skill   | skills    | taste-code + taste-skill (anti-slop)                     |
 | 5 | LSP Plugins   | skill     | language server per backend stack (native Claude Code LSP) |
 | 6 | GitHub MCP    | skill     | OFFICIAL github/github-mcp-server for issues, PRs, branches |
+| 7 | Caveman       | skills    | caveman* — ultra-compressed response mode (communication compress) |
 
 > **GSD was removed** from the kit — Superpowers already provides sub-agent-driven context
 > triage, so a separate GSD was redundant.
@@ -64,6 +65,8 @@ bash install/install.sh
 6. **GitHub MCP** — registers the OFFICIAL `github/github-mcp-server` (remote
    `https://api.githubcopilot.com/mcp/` or local Docker) for issues/PRs/branches, and
    verifies `gh` auth.
+7. **Caveman** — copies the `caveman*` skills (ultra-compressed response mode: `/caveman`,
+   `/caveman-commit`, `/caveman-review`, `/caveman-compress`, `/caveman-help`, `/caveman-stats`).
 
 ## After install (fresh device)
 1. Restart the Claude Code session so skills + hooks load.
@@ -77,7 +80,7 @@ bash install/install.sh
    installer to wire env vars, then `/plugin`.
 
 ## Verification
-- `ls ~/.claude/skills/` shows graphify, taste-skill, taste-code, lsp-plugins, github-mcp.
+- `ls ~/.claude/skills/` shows graphify, taste-skill, taste-code, caveman*, lsp-plugins, github-mcp.
 - `~/.claude/settings.json` has both marketplaces under `extraKnownMarketplaces` and both
   plugins under `enabledPlugins`.
 - `curl -s http://localhost:6767/` returns the supermemory local web UI (component 3).
