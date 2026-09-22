@@ -58,8 +58,7 @@ Rules for the script:
 
 ## Step 2: Wire the Stop hook
 
-`hookify@claude-plugins-official` generates this from a sentence, or write it directly in
-`.claude/settings.json`:
+Write it directly in `.claude/settings.json` — through the kit's wrapper, not the bare command:
 
 ```json
 {
@@ -67,15 +66,19 @@ Rules for the script:
     "Stop": [
       {
         "matcher": "*",
-        "hooks": [{ "type": "command", "command": "npm run verify" }]
+        "hooks": [{ "type": "command", "command": ".claude/hooks/stop-verify.sh", "timeout": 600 }]
       }
     ]
   }
 }
 ```
 
-A non-zero exit blocks the turn from ending and the failure output returns to the agent, which
-then fixes it and retries — the loop closes without you in it.
+**Why the wrapper:** Claude Code blocks a stop only on **exit code 2** (with stderr returned to
+the agent). `verify` exits 1 on failure, which Claude Code treats as a *non-blocking* notice — a
+gate that never closes. `stop-verify.sh` (in `guardrails/templates/`) runs `verify`, maps
+failure → exit 2 with the real output, skips clean trees (nothing edited → nothing to gate), and
+is **bounded**: after 3 blocked stops in a session it lets the turn end with a loud notice, so it
+can never trap the loop (the reason the kit rejected `ralph-loop`).
 
 The kit's `guardrails` template (`claude-settings.json`) already contains this Stop hook next to
 the PreToolUse/PostToolUse hooks — `init-project.sh` installs all of them together.
