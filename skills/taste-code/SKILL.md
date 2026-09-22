@@ -47,6 +47,30 @@ repo (e.g. `$TMPDIR/spike-<name>`), prove or kill the idea, then delete it. Only
 Never commit spike code, never "clean up a spike into production" — rewrite from what you
 learned. This is rule 4 applied to process: no speculative code in the tree.
 
+## Mechanize what can be mechanized
+
+Prose rules are advisory: they get dropped as context fills, and they cost tokens in every
+session whether or not they fire. Several of the 10 are **mechanically checkable** — rule 8
+(unused imports/variables/args), rule 10 (formatting), and part of rule 2 (placeholder
+scaffolding) — so enforce those in a PostToolUse formatter/linter hook instead of here.
+Deterministic, zero standing context, no reliance on the model remembering.
+
+What stays as text is only what needs judgement: rules 1, 4, 6, 7 (smallest correct unit, no
+over-engineering, explicit over clever, naming says what it is). A hook cannot decide whether
+an abstraction is speculative.
+
+## Reviewer findings do not license slop
+
+A reviewer asked to find gaps will manufacture them, and the cheapest way to close a
+manufactured finding is exactly the slop these rules exist to prevent: an extra abstraction
+layer, a defensive branch for an impossible state, a test for a state the type system already
+excludes, or `try/catch` + log to silence a security scanner (rule 3).
+
+**You have standing permission to reject a review finding that would violate these rules.** Say
+which rule it violates and why the finding does not apply. A reviewer's authority covers
+correctness and stated-requirement gaps — not style, and not speculative hardening. If a
+finding is real, fix the root cause; do not wrap it.
+
 ## When to Use
 - Every code generation request, unless the user explicitly asks for maximal scaffolding.
 - Code review passes: check output against these rules before presenting it.

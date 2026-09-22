@@ -57,6 +57,33 @@ Run that in each repo you want gated. **Never** set `git config --global core.ho
 force it everywhere: it overrides every repo's own hooks and silently breaks husky/lefthook
 setups in unrelated projects.
 
+## Layer 4: the dependency tree (osv-scanner)
+
+Layers 1-3 all look at code *you* wrote. None of them looks at the code you *installed* — and
+that is the one supply-chain vector the agent itself creates. The failure is documented:
+**slopsquatting**, where the model confidently recommends a package name that never existed
+and an attacker has pre-registered it on npm/PyPI. Stale model knowledge (see the
+`docs-freshness` skill) is the root cause; this is the catch.
+
+```bash
+brew install osv-scanner     # the kit installer does this for you
+```
+
+Two uses, both cheap:
+- **Pre-install existence check.** Before `npm install <pkg>` / `pip install <pkg>` on a package
+  *the agent proposed rather than the user named*: confirm it exists, is not brand new, and the
+  name matches the intended library (`npm view <pkg>` / `pip index versions <pkg>`). A
+  plausible-looking name the model produced from memory is the exact thing to distrust.
+- **Tree scan**, wired into the `verify` script (see the `verify-gate` skill):
+  ```bash
+  osv-scanner scan source -r .
+  ```
+  Reachability analysis suppresses CVEs your code can't actually reach, which is what keeps this
+  from becoming noise the agent learns to skip.
+
+Do **not** add a full SCA platform on top. Findings the agent can't act on get suppressed, and
+suppression is worse than absence because it looks like coverage.
+
 ## Procedure
 
 0. **Before every `git commit`, scan staged changes:**
@@ -95,6 +122,26 @@ setups in unrelated projects.
   agent-side rule.
 - **Caveman interaction:** security warnings already auto-drop compression (Caveman's
   Auto-Clarity rule) — never compress or truncate plugin findings.
+- **Duplicate findings across layers train the agent to dismiss all of them.** One issue can
+  arrive three times (security-guidance at edit time, claude-security in the deep scan, osv in
+  the tree scan). De-duplicate before reporting: one finding, one line, the layer that caught
+  it named once.
+- **Per-edit review on every edit is a standing tax.** Most edits are not security-relevant.
+  Let security-guidance fire on security-relevant surfaces — auth, crypto, deserialization,
+  subprocess/shell, SQL, file paths, network, `.github/workflows/` — and don't treat its silence
+  on a CSS change as a signal about anything.
+- **Closing a finding with a `try/catch` violates `taste-code` rule 3.** "Wrap it and log" is
+  the cheapest way to make a scanner shut up and it is not a fix. Address the root cause or
+  record why the finding is a false positive; never trade a security finding for slop.
+
+## Layer scope (what fires when)
+
+| Layer | Trigger | Surface |
+|-------|---------|---------|
+| gitleaks | every `git commit` (agent-side rule) | literal credentials in the staged diff |
+| security-guidance | edits to security-relevant surfaces | injection, deserialization, DOM, workflows |
+| claude-security | on demand, pre-PR/release, CI | whole repo or diff, CWE-classified, SARIF |
+| osv-scanner | `verify` script + before agent-proposed installs | dependency tree, slopsquatting |
 
 ## Verification
 

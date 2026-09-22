@@ -39,12 +39,20 @@ before hand-wiring servers. In a Claude Code session:
 /plugin install clangd-lsp@claude-plugins-official       # C/C++
 ```
 If the marketplace is missing: `/plugin marketplace add anthropics/claude-plugins-official`.
-Also available: `csharp-lsp`, `jdtls-lsp`, `kotlin-lsp`, `lua-lsp`, `php-lsp`, `swift-lsp`.
+Also available: `csharp-lsp`, `jdtls-lsp`, `kotlin-lsp`, `liquid-lsp`, `lua-lsp`, `php-lsp`,
+`ruby-lsp`, `swift-lsp` — **13 LSP plugins in total** (verified against the live
+`marketplace.json`).
 **The plugin wires the connection but does NOT install the server binary** — install the
 binary from the table below first (the plugin's LSP tool then gives automatic post-edit
 diagnostics plus navigation: definitions, references, hover types, call hierarchies).
 Cloud sessions don't start plugin language servers. Hosts without the marketplace (e.g.
 Hermes) use the manual path alone.
+
+**Install per-stack only, never the whole set.** Every installed plugin's tools and metadata
+occupy context in projects that never use that language — a Python-only repo should not be
+paying for `gopls-lsp` and `typescript-lsp`. Detect the stack (step 1), install the one or two
+that match, and skip the rest. This is the kit component with the best ratio of accuracy gained
+to context spent; scoping it is what keeps that true.
 
 ## Server Binaries (install per stack — required for the plugins too)
 

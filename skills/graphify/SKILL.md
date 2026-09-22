@@ -1,7 +1,16 @@
 ---
 name: graphify
-description: "Use for any question about a codebase, its architecture, file relationships, or project content — especially when graphify-out/ exists, where the question should be treated as a graphify query first. Turns any input (code, docs, papers, images, videos) into a persistent knowledge graph with god nodes, community detection, and query/path/explain tools."
+description: "ON-DEMAND architectural orientation for a LARGE UNFAMILIAR codebase, or for building a knowledge graph over docs/papers/images/videos. Invoke only when explicitly asked (/graphify) or when first orienting in a repo too big to navigate by grep. For everyday questions about types, symbols, definitions and references in a codebase you are already working in, use LSP + grep instead — they are compiler-accurate and never stale."
 ---
+
+> **Scope note (kit v2).** This skill is **not** the default retrieval path. The kit's LSP
+> plugins give compiler-accurate, always-current symbol navigation; `grep`/`glob` handle the
+> rest at zero standing cost. A prebuilt graph pays a build cost plus a maintenance cost
+> proportional to churn, and **a stale graph is worse than none because the agent trusts it**.
+> Use graphify for what an index is genuinely better at: one-shot orientation in a large repo
+> you don't know, cross-repo maps, and non-code corpora (docs, papers, images, video).
+> When answering from an existing `graphify-out/`, state when the graph was built and flag that
+> any refactor since then may have invalidated it.
 
 # /graphify
 

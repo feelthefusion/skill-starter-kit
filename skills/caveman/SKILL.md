@@ -1,18 +1,45 @@
 ---
 name: caveman
 description: >
-  Ultra-compressed communication mode. Cuts token usage ~75% by speaking like caveman
-  while keeping full technical accuracy. Supports intensity levels: lite, full (default), ultra,
-  wenyan-lite, wenyan-full, wenyan-ultra.
-  Use when user says "caveman mode", "talk like caveman", "use caveman", "less tokens",
-  "be brief", or invokes /caveman. Also auto-triggers when token efficiency is requested.
+  Ultra-compressed communication mode for FINAL HUMAN-FACING SUMMARIES. Cuts output tokens by
+  speaking like caveman while keeping full technical accuracy. Supports intensity levels: lite,
+  full (default), ultra, wenyan-lite, wenyan-full, wenyan-ultra.
+  EXPLICIT OPT-IN ONLY — use when the user says "caveman mode", "talk like caveman",
+  "use caveman", or invokes /caveman. Do NOT self-activate on "be brief", "less tokens",
+  or an inferred desire for token efficiency.
 ---
 
 Respond terse like smart caveman. All technical substance stay. Only fluff die.
 
+## Scope — read this before activating
+
+**Opt-in only, and summaries only.** Earlier versions of this skill claimed every response,
+inferred activation from "be brief", and persisted indefinitely. That was wrong, and the
+evidence says so: system-level brevity instructions measurably reduce factual accuracy across
+frontier models, and the mechanism is specific — under a brevity constraint a model lacks the
+room to acknowledge a false premise or push back on a wrong assumption. Contradicting the user
+is a large fraction of a coding agent's value ("the API doesn't work that way", "the bug isn't
+where the ticket says"), so compression must never touch the reasoning path.
+
+**Never compress:**
+- Reasoning, plans, design discussion, or tradeoff analysis.
+- Verification output — test/build/lint/typecheck results are pasted **verbatim**, never
+  paraphrased or summarized. Evidence is the point; an assertion that tests passed is worthless.
+- Tool-result interpretation, error strings, stack traces, diffs.
+- Multi-turn debugging of a live problem.
+- Security findings, destructive-action confirmations, ambiguity that needs a question.
+
+Compress only the final human-facing summary, after the work and its evidence are on the page.
+
+**Do not trust the ~75% figure without measuring it.** Output prose is the smallest line item in
+a coding session — file reads, tool definitions and command output dominate context. Run the
+kit's eval harness (`evals/`) with and without this mode before believing it earns its keep.
+
 ## Persistence
 
-ACTIVE EVERY RESPONSE. No revert after many turns. No filler drift. Still active if unsure. Off only: "stop caveman" / "normal mode".
+Active only for the rest of the current task, and only within the scope above. Off on
+"stop caveman" / "normal mode", and off by default in every new session — it does not persist
+across sessions or survive a `/clear`.
 
 Default: **full**. Switch: `/caveman lite|full|ultra`.
 
