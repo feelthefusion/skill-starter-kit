@@ -16,7 +16,7 @@
 # =============================================================================
 set -euo pipefail
 
-KIT_SKILLS_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/skills"
+KIT_SKILLS_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/skills"
 CLAUDE_SKILLS_DIR="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
 CLAUDE_SETTINGS="$HOME/.claude/settings.json"
 
