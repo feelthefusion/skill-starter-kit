@@ -56,8 +56,10 @@ pip index versions <pkg>
 ```
 
 Red flags: no repository link, published days ago, download counts near zero, a name one
-character off a popular package. On any of those — stop and confirm with the user. Then
-`osv-scanner scan source -r .` (`security-gate` layer 4) after the install lands.
+character off a popular package. On any of those — stop and confirm with the user. The
+deterministic form of this check (`npm view <pkg> time.created repository.url`, age > 7 days,
+plus the package manager's own release-age cooldown) is `security-gate` layer 5; run
+`osv-scanner scan source -r .` (layer 4) after the install lands.
 
 ## Procedure
 
@@ -81,6 +83,15 @@ character off a popular package. On any of those — stop and confirm with the u
 - **Fetching a whole docs site.** Pull the specific page or the `llms.txt`, not the sitemap.
 - **Trusting a search-result snippet over the installed source.** Rung 2 beats rung 3 whenever
   it can answer.
+
+## Works with →
+- **`security-gate`** — this skill asks "is it real and the one I meant"; layer 5 asks "is it
+  old enough and does it run scripts". Same moment, in that order, before every install.
+- **`taste-code`** rule 5 comes first: most "I need a library" is wrong.
+- **`lsp-plugins`** verifies the signature compiles; this skill verifies it is the *current*
+  API. Both are needed for fast-moving dependencies.
+- **`graphify`** (`--wiki`/DeepWiki) answers *architectural* questions about a dependency;
+  Context7 answers reference questions.
 
 ## Verification
 

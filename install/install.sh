@@ -3,23 +3,25 @@
 # New Project Skill Starter Kit — installer for a fresh Claude Code device
 # Usage:  bash install.sh   (or run from inside Claude Code via `/install`)
 #
-# Installs / wires all 11 kit components onto this machine:
-#   1. Graphify          skill (copied) — on-demand orientation, not the default retrieval path
+# Installs / wires all 12 kit components onto this machine:
+#   0. AGENTS.md         template — per repo, via install/init-project.sh
+#   1. Graphify          skill (FETCHED from Graphify-Labs/graphify) — on-demand orientation
 #   2. Superpowers       plugin (obra/superpowers-marketplace; also listed as
 #                        superpowers@claude-plugins-official — do NOT enable both)
 #   3. Supermemory       plugin + LOCAL self-hosted server (supermemoryai/claude-supermemory)
-#   4. Taste-Skill       skills (taste-code + taste-skill)  [copied]
+#   4. Taste-Skill       skills (taste-code [kit] + taste-skill [FETCHED from Leonxlnx/taste-skill])
 #   5. LSP Plugins       skill (copied) — installs LSP per stack at runtime
 #   6. GitHub MCP        skill (copied) — official github/github-mcp-server (issues/PRs/branches)
-#   7. Caveman           skills (caveman*) — opt-in summary compression, NOT auto-triggered
-#   8. Security Gate     skill (copied) + OFFICIAL Anthropic plugins (security-guidance + claude-security) + gitleaks + osv-scanner
-#   9. Verify Gate       skill (copied) + hookify plugin — the pass/fail completion gate
+#   7. Caveman           skills (caveman, caveman-commit) [FETCHED from JuliusBrussee/caveman] — opt-in
+#   8. Security Gate     skill (copied) + OFFICIAL Anthropic plugins (security-guidance + claude-security) + gitleaks + osv-scanner + zizmor (uvx)
+#   9. Verify Gate       skill (copied) + Stop hook (shipped in guardrails settings template)
 #  10. Browser Verify    skill (copied) + playwright + chrome-devtools-mcp plugins
 #  11. Docs Freshness    skill (copied) + context7 plugin (per-project)
+#  12. Guardrails        skill (copied) — hooks + deny-list + sandbox are per repo (init-project.sh)
 #
-# LIVE BY DESIGN: pulls the kit from GitHub before installing, and REFRESHES
-# already-installed skills instead of skipping them. Re-run it any time to update.
-# Env: KIT_NO_PULL=1 to install the local copy without pulling.
+# LIVE BY DESIGN: pulls the kit from GitHub, FETCHES third-party skills from their upstream
+# repos (kit overlays re-applied), and REFRESHES installed skills in place. Re-run to update.
+# Env: KIT_NO_PULL=1 (skip kit pull) · KIT_NO_UPSTREAM=1 (skip upstream fetch, use vendored)
 # =============================================================================
 set -euo pipefail
 
@@ -34,18 +36,26 @@ echo "── New Project Skill Starter Kit ────────────�
 
 # --- 0: pull the latest kit before installing anything ----------------------
 kit_self_update "$KIT_ROOT"
+kit_fetch_upstreams "$KIT_ROOT"
 
 # --- Common prereqs ---------------------------------------------------------
 echo "▶ checking prereqs …"
 command -v node >/dev/null 2>&1 || { echo "✗ node missing (required by Claude Code + Supermemory)"; exit 1; }
 echo "✓ node $(node --version)"
 
-# --- 1,4,5,6,7,8: skills are synced into ~/.claude/skills -------------------
+# --- skills are synced into ~/.claude/skills (upstream-fetched copy when available) -----
 echo "▶ syncing skills into $CLAUDE_SKILLS_DIR"
 mkdir -p "$CLAUDE_SKILLS_DIR"
-for skill in graphify taste-skill taste-code caveman caveman-commit caveman-compress caveman-help caveman-review caveman-stats lsp-plugins github-mcp security-gate verify-gate browser-verify docs-freshness; do
-    sync_skill "$KIT_SKILLS_SRC/$skill" "$CLAUDE_SKILLS_DIR/$skill"
+KIT_SKILLS="graphify taste-skill taste-code caveman caveman-commit lsp-plugins github-mcp security-gate verify-gate browser-verify docs-freshness guardrails"
+for skill in $KIT_SKILLS; do
+    sync_skill "$(skill_src "$KIT_ROOT" "$skill")" "$CLAUDE_SKILLS_DIR/$skill"
 done
+for stale in caveman-compress caveman-help caveman-review caveman-stats; do
+    [ -d "$CLAUDE_SKILLS_DIR/$stale" ] && rm -rf "$CLAUDE_SKILLS_DIR/$stale" && echo "  · $stale  removed (dropped from kit v3)"
+done
+# recall skill + workflow map (repo-root SKILL.md is the single source of truth)
+mkdir -p "$CLAUDE_SKILLS_DIR/skill-starter-kit" && cp "$KIT_ROOT/SKILL.md" "$CLAUDE_SKILLS_DIR/skill-starter-kit/SKILL.md"
+echo "  · skill-starter-kit (recall + workflow map)  written ✓"
 write_kit_version "$KIT_ROOT" "$CLAUDE_SKILLS_DIR"
 
 # --- 2: Superpowers plugin ---------------------------------------------------
@@ -191,9 +201,19 @@ else
     echo "  ⚠ osv-scanner missing and no brew — see https://github.com/google/osv-scanner"
 fi
 
+# 8d. uv — runs zizmor (`uvx zizmor`) for the GitHub Actions layer, and `uv sync --locked`
+if command -v uv >/dev/null 2>&1; then
+    echo "  · uv present ✓ (zizmor runs via uvx in verify.sh)"
+elif command -v brew >/dev/null 2>&1; then
+    brew install uv >/dev/null 2>&1 && echo "  · uv installed ✓" || echo "  ⚠ brew install uv failed — https://docs.astral.sh/uv/"
+else
+    echo "  ⚠ uv missing — install from https://docs.astral.sh/uv/ (needed for uvx zizmor)"
+fi
+
 # --- 9,10,11: Verify Gate / Browser Verify / Docs Freshness plugins ----------
 # All four live in the OFFICIAL Anthropic marketplace (registered above).
-#   hookify            → generates the Stop hook that runs `verify` (component 9)
+#   (hookify is no longer required: guardrails/templates/claude-settings.json ships the
+#    Stop/PreToolUse/PostToolUse hooks verbatim — init-project.sh installs it per repo)
 #   playwright         → drive + assert + screenshot (component 10)
 #   chrome-devtools-mcp→ console/network/DOM/perf inspection (component 10)
 #   context7           → version-specific library docs (component 11)
@@ -211,13 +231,14 @@ data.setdefault("extraKnownMarketplaces", {})["claude-plugins-official"] = {
     "source": {"source": "github", "repo": "anthropics/claude-plugins-official"}
 }
 plugins = data.setdefault("enabledPlugins", {})
-for name in ("hookify", "playwright", "chrome-devtools-mcp"):
+for name in ("playwright", "chrome-devtools-mcp"):
     plugins[f"{name}@claude-plugins-official"] = True
+plugins.pop("hookify@claude-plugins-official", None)
 plugins.setdefault("context7@claude-plugins-official", False)
 with open(p, "w") as f:
     json.dump(data, f, indent=2)
     f.write("\n")
-print("  · hookify + playwright + chrome-devtools-mcp enabled ✓")
+print("  · playwright + chrome-devtools-mcp enabled ✓ (hookify dropped — hooks ship as files)")
 print("  · context7 registered but DISABLED — enable per-project (docs-freshness skill)")
 PY
 
@@ -241,14 +262,13 @@ echo "Next: inside Claude Code run  /plugin install superpowers@superpowers-mark
 echo "                               /plugin install supermemory@supermemory-plugins"
 echo "                               /plugin install security-guidance@claude-plugins-official"
 echo "                               /plugin install claude-security@claude-plugins-official"
-echo "                               /plugin install hookify@claude-plugins-official"
 echo "                               /plugin install playwright@claude-plugins-official"
 echo "                               /plugin install chrome-devtools-mcp@claude-plugins-official"
 echo "      then restart the session (or /reload-plugins) so skills + hooks load."
 echo
-echo "FIRST THING in a new project: define a \`verify\` command and wire the Stop hook"
-echo "(skill verify-gate, template skills/verify-gate/templates/verify.sh). Nothing else"
-echo "in the kit blocks a false 'done'."
+echo "FIRST THING in a new project:  bash $KIT_ROOT/install/init-project.sh"
+echo "  → AGENTS.md, verify.sh, .claude/settings.json (guardrails + Stop hook + deny + sandbox), .npmrc"
+echo "  Then trim verify.sh, BREAK something, and confirm the gate blocks the turn."
 echo
 echo "Per-project, not global:  context7 (docs MCP), the matching <lang>-lsp plugin,"
 echo "and GitHub MCP. Each costs context in every session it is enabled."

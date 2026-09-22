@@ -1,3 +1,6 @@
 
 # eval verdicts are per-machine, not shared state
 evals/results.json
+
+# upstream skills fetched at install time (vendored copies in skills/ are the fallback)
+.cache/

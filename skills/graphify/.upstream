@@ -1,0 +1,5 @@
+upstream: Graphify-Labs/graphify
+ref: main
+path: graphify/skill.md
+commit: 91f4d12
+fetched: 2026-09-22T10:39:18Z

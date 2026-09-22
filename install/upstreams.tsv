@@ -1,0 +1,7 @@
+# skill-dir	owner/repo	ref	path-in-repo
+# Fetched at install time (latest upstream); skills/<dir> is the offline fallback.
+# Kit edits live in install/overlays/<skill>/ and are re-applied after fetch.
+graphify	Graphify-Labs/graphify	main	graphify/skill.md
+caveman	JuliusBrussee/caveman	main	skills/caveman
+caveman-commit	JuliusBrussee/caveman	main	skills/caveman-commit
+taste-skill	Leonxlnx/taste-skill	main	skills/taste-skill

@@ -1,0 +1,1 @@
+Ultra-compressed commit message generator — OPT-IN ONLY (/caveman-commit or "caveman commit"). Cuts noise from commit messages while keeping every symbol, path, and reason exact. Never compresses the diff, test output, or the commit body's evidence lines.

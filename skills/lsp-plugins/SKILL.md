@@ -40,8 +40,8 @@ before hand-wiring servers. In a Claude Code session:
 ```
 If the marketplace is missing: `/plugin marketplace add anthropics/claude-plugins-official`.
 Also available: `csharp-lsp`, `jdtls-lsp`, `kotlin-lsp`, `liquid-lsp`, `lua-lsp`, `php-lsp`,
-`ruby-lsp`, `swift-lsp` — **13 LSP plugins in total** (verified against the live
-`marketplace.json`).
+`ruby-lsp`, `swift-lsp` — **13 LSP plugins in total: 12 Anthropic first-party plus
+`liquid-lsp`, which is Shopify-owned** (verified against the live `marketplace.json`).
 **The plugin wires the connection but does NOT install the server binary** — install the
 binary from the table below first (the plugin's LSP tool then gives automatic post-edit
 diagnostics plus navigation: definitions, references, hover types, call hierarchies).
@@ -82,6 +82,15 @@ to context spent; scoping it is what keeps that true.
   server matching the installed toolchain version.
 - **Monorepos / multiple languages.** Install per-language servers touched in the task; don't
   collapse to one.
+
+## Works with →
+- **`verify-gate`** — LSP diagnostics catch the type error in the file you just edited; the gate
+  catches the regression three modules away. Fix LSP errors *before* ending the turn so the
+  gate bounces less.
+- **`graphify`** — this is the default retrieval path; Graphify is for orientation only.
+- **`guardrails`** `format.sh` runs after each edit; LSP re-reads the formatted file.
+- **`docs-freshness`** — LSP knows a signature *exists*; it cannot know the call is semantically
+  right for the installed version. Different question, different tool.
 
 ## Verification
 - `typecheck`-style check or "no errors" from the server for a file known to be correct.

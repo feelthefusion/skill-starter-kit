@@ -1,0 +1,24 @@
+{
+  "$comment": "Skill Starter Kit — project .claude/settings.json. Commit this. Personal overrides go in settings.local.json.",
+  "permissions": {
+    "deny": [
+      "Read(./.env)", "Read(./.env.*)",
+      "Read(~/.ssh/**)", "Read(~/.aws/**)", "Read(~/.config/gh/**)",
+      "Bash(curl *)", "Bash(wget *)",
+      "Bash(git push --force*)", "Bash(rm -rf *)",
+      "Bash(npm publish*)", "Bash(sudo *)"
+    ]
+  },
+  "sandbox": { "enabled": true, "failIfUnavailable": true },
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Bash", "hooks": [ { "type": "command", "command": ".claude/hooks/guard.sh", "timeout": 5 } ] }
+    ],
+    "PostToolUse": [
+      { "matcher": "Edit|Write|MultiEdit", "hooks": [ { "type": "command", "command": ".claude/hooks/format.sh", "timeout": 30 } ] }
+    ],
+    "Stop": [
+      { "matcher": "*", "hooks": [ { "type": "command", "command": "./verify.sh", "timeout": 180 } ] }
+    ]
+  }
+}

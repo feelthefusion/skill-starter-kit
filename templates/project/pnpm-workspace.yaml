@@ -1,0 +1,4 @@
+# Skill Starter Kit — install hygiene (pnpm >= 10.16; default is 1440 since pnpm 11)
+minimumReleaseAge: 10080   # minutes = 7 days
+# minimumReleaseAgeExclude:
+#   - '@your-org/*'

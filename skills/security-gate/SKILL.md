@@ -1,6 +1,6 @@
 ---
 name: security-gate
-description: "Wire the OFFICIAL Anthropic security plugins (security-guidance + claude-security) so code changes are vetted for vulnerabilities and secrets before they ship — not a hand-rolled scanner."
+description: "Five-layer security gate for agent-written code: Anthropic's official security-guidance + claude-security plugins, gitleaks on every staged diff, osv-scanner over the dependency tree (CVEs AND known-malicious MAL-* packages), and install hygiene (release-age cooldown, ignore-scripts, frozen lockfiles, zizmor for GitHub Actions). Use before any commit, install, or PR, and when setting up a repo."
 ---
 
 # Security Gate: Official Anthropic Security Plugins
@@ -81,15 +81,63 @@ Two uses, both cheap:
   Reachability analysis suppresses CVEs your code can't actually reach, which is what keeps this
   from becoming noise the agent learns to skip.
 
+**It catches malicious packages, not just vulnerable ones.** OSV.dev ingests the OpenSSF
+`malicious-packages` database, so `MAL-*` records (typosquats, hijacked releases like the 2026
+`axios` compromise) fail the scan exactly like a CVE. Verified: a lockfile pinning
+`axios@1.14.1` → `MAL-2026-2307`, exit 1.
+
 Do **not** add a full SCA platform on top. Findings the agent can't act on get suppressed, and
 suppression is worse than absence because it looks like coverage.
+
+## Layer 5: install hygiene (the window OSV cannot see)
+
+OSV knows about a bad release only after someone files it — hours to days. Every major
+package manager now closes that window natively, for free, with a **release-age cooldown**,
+and the install-time script that carries the payload can simply be switched off. These are
+config files, not prose; the kit's `init-project.sh` lays them down.
+
+| Package manager | Cooldown setting (7 days) | Scripts off | Locked install |
+|---|---|---|---|
+| npm ≥ 11.10 | `.npmrc` → `min-release-age=7` | `ignore-scripts=true` | `npm ci` |
+| pnpm ≥ 10.16 (default 1 day since v11) | `pnpm-workspace.yaml` → `minimumReleaseAge: 10080` | built-in allowlist | `pnpm install --frozen-lockfile` |
+| Yarn Berry ≥ 4.10 | `.yarnrc.yml` → `npmMinimalAgeGate: 10080` | `enableScripts: false` | `yarn install --immutable` |
+| Bun ≥ 1.3 | `bunfig.toml` → `[install] minimumReleaseAge = 604800` | `trustedDependencies` | `bun install --frozen-lockfile` |
+| uv / pip | — (use `uv lock` + `--locked`) | n/a | `uv sync --locked` |
+
+Agent rules that go with it:
+- `verify` installs from the lockfile (`npm ci`, `uv sync --locked`) — never bare `install`.
+- **Before adding a dependency the agent proposed** (not one the user named), the existence
+  check from `docs-freshness` becomes a command: `npm view <pkg> time.created repository.url`
+  (or `pip index versions <pkg>`) must show a repository and an age over 7 days. Otherwise stop
+  and ask.
+- **GitHub Actions**: `uvx zizmor --min-severity medium .github/workflows` in `verify` (or
+  pre-commit). security-guidance only *flags* workflow edits — zizmor is the gate: template
+  injection, unpinned `uses:`, credential persistence, excessive `permissions:`. The March 2026
+  `trivy-action` `pull_request_target` compromise is the concrete case. Pin `uses:` to a SHA,
+  default `permissions: contents: read`.
+
+## What is a gate and what is advice (be honest about it)
+
+| Layer | Deterministic gate? |
+|---|---|
+| gitleaks on staged diff | **yes** — exit code |
+| osv-scanner in `verify` | **yes** — exit code |
+| cooldown / ignore-scripts / frozen lockfile | **yes** — the package manager enforces it |
+| zizmor in `verify` | **yes** — exit code |
+| security-guidance pattern warnings (edit time) | partial — regex, ~25 patterns |
+| security-guidance Stop-time diff review, commit reviewer | **no** — LLM prose |
+| claude-security deep scan | **no** — LLM agents; strong, but advisory and unisolated: run it on **untrusted repos only inside the sandbox** (`guardrails`) |
+
+Count only the top rows as enforcement.
 
 ## Procedure
 
 0. **Before every `git commit`, scan staged changes:**
    ```bash
-   gitleaks git --staged --no-banner --redact --verbose
+   gitleaks git --staged --no-banner --redact --verbose --exit-code 1
    ```
+   `--redact` matters: without it the secret itself is echoed into the agent's context (and its
+   transcript). Confirmed false positives go in a committed `.gitleaksignore` by fingerprint.
    Exit 1 = a secret is staged. **Stop.** Do not commit, do not `--no-verify`. Unstage
    the file, replace the literal with an env var reference, then re-scan. Report the finding
    uncompressed (Auto-Clarity). Only a confirmed false positive is allowed past, and only via
@@ -141,7 +189,21 @@ suppression is worse than absence because it looks like coverage.
 | gitleaks | every `git commit` (agent-side rule) | literal credentials in the staged diff |
 | security-guidance | edits to security-relevant surfaces | injection, deserialization, DOM, workflows |
 | claude-security | on demand, pre-PR/release, CI | whole repo or diff, CWE-classified, SARIF |
-| osv-scanner | `verify` script + before agent-proposed installs | dependency tree, slopsquatting |
+| osv-scanner | `verify` script + before agent-proposed installs | dependency tree: CVEs + `MAL-*` malicious packages |
+| cooldown / ignore-scripts / lockfile | every install, by the package manager | the days before a bad release is reported |
+| zizmor | `verify` script | `.github/workflows/*` |
+
+## Works with →
+- **`guardrails`** blocks the *action* (`cat .env`, `--no-verify`, `curl | sh`); this skill
+  inspects the *content* (a key in the diff, a bad dependency). Both, never either.
+- **`docs-freshness`** owns "does this package exist and is it the one I meant"; layer 5 owns
+  "is it old enough and does it run scripts". Run them in that order before any install.
+- **`verify-gate`** carries layers 4–5 (`osv-scanner`, locked install, zizmor) so they run on
+  every turn end, not when someone remembers.
+- **`github-mcp`** — the same least-privilege principle at the API: read-only, lockdown mode,
+  explicit toolsets, repo-scoped token.
+- **`caveman`** never compresses a finding (Auto-Clarity); **`taste-code`** rule 3 forbids
+  closing one with try/catch.
 
 ## Verification
 

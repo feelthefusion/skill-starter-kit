@@ -30,14 +30,14 @@ One command, in the project's own idiom. Fast checks first so failures surface e
 ```bash
 # package.json
 "scripts": {
-  "verify": "npm run typecheck && npm run lint && npm test && npm run build && osv-scanner scan source -r ."
+  "verify": "npm ci --ignore-scripts && npm run typecheck && npm run lint && npm test && npm run build && osv-scanner scan source -r ."
 }
 ```
 
 ```makefile
 # Makefile
 verify:
-	ruff check . && mypy . && pytest -q && osv-scanner scan source -r .
+	uv sync --locked && ruff check . && mypy . && pytest -q && osv-scanner scan source -r .
 ```
 
 A copy-paste starting point for repos with no task runner:
@@ -49,7 +49,12 @@ Rules for the script:
   invent one. Missing step > fake step.
 - **Keep it under ~2 minutes.** A gate slow enough to skip gets skipped. Push the slow suite to
   CI and keep `verify` at the fast, high-signal subset.
-- **`osv-scanner scan source -r .`** is the dependency-tree layer from `security-gate`.
+- **Install from the lockfile first** (`npm ci`, `uv sync --locked`, `pnpm install
+  --frozen-lockfile`) so the gate tests what will ship — `security-gate` layer 5.
+- **`osv-scanner scan source -r .`** is the dependency-tree layer from `security-gate`
+  (CVEs and known-malicious `MAL-*` packages).
+- **`uvx zizmor .github/workflows`** if the repo has Actions — `security-gate` layer 5.
+- **One Playwright smoke spec** if the repo renders a UI — `browser-verify`.
 
 ## Step 2: Wire the Stop hook
 
@@ -72,11 +77,31 @@ Rules for the script:
 A non-zero exit blocks the turn from ending and the failure output returns to the agent, which
 then fixes it and retries — the loop closes without you in it.
 
+The kit's `guardrails` template (`claude-settings.json`) already contains this Stop hook next to
+the PreToolUse/PostToolUse hooks — `init-project.sh` installs all of them together.
+
+### Hermes: two native equivalents, both deterministic
+
+Hermes ships a built-in *verify-on-stop* nudge when code was edited without fresh verification
+evidence, and two ways to make **your** `verify` the gate:
+
+1. **`pre_verify` shell hook** — fires once per turn when the agent edited code, right before
+   it finishes; it accepts the Claude Code Stop shape (`{"decision":"block","reason":…}`) and
+   is bounded by `agent.max_verify_nudges` (default 3) so it can never trap the loop. The kit's
+   `guardrails/templates/verify-nudge.sh` runs `./verify.sh` / `npm run verify` / `make verify`
+   and, on failure, returns the real output as the reason. Wire it via
+   `guardrails/templates/hermes-hooks.yaml` (apply with `hermes config set`).
+2. **`/goal gate add "./verify.sh"`** — a per-task quality gate: a shell command that must exit
+   0 before the goal judge may declare the goal done. Pair with `/goal draft <objective>` so the
+   completion contract names the verification surface.
+
 Escalation ladder, weakest to strongest (use the strongest the host supports):
 1. In-prompt instruction to run the check — advisory, gets dropped.
-2. `/goal` condition — re-checked after every turn.
-3. **Stop hook** — deterministic block. Default for this kit.
-4. Verification subagent — fresh context sees only the diff and the criteria.
+2. Hermes `/goal` judge alone — LLM-judged, re-checked every turn.
+3. **Stop hook (Claude Code) / `pre_verify` hook or `/goal gate` (Hermes)** — deterministic
+   block. Default for this kit.
+4. Verification subagent — fresh context sees only the diff and the criteria (Superpowers'
+   `requesting-code-review`, or Hermes `delegate_task`).
 
 ## Step 3: Evidence discipline
 
@@ -112,6 +137,19 @@ cheapest way to close a manufactured finding is the slop `taste-code` exists to 
 - **Letting the gate creep.** Every added minute increases the odds someone disables it.
 - **Confusing LSP diagnostics with this.** LSP catches type errors in the edited file. It does
   not catch a broken suite, a failing build, or a regression three modules away.
+
+## Works with →
+- **`guardrails`** — same `settings.json`; `guard.sh` blocks `--no-verify` so nothing routes
+  around this gate.
+- **Superpowers `verification-before-completion`** is the *advisory* twin of this gate
+  ("evidence before claims"). Keep both: the skill shapes the habit, the hook enforces it. On
+  Hermes the bundled skills play the same role.
+- **`security-gate`** supplies the dependency/Actions steps; **`browser-verify`** supplies the
+  smoke spec; **`lsp-plugins`** catches per-file type errors *before* the gate runs so fewer
+  turns bounce.
+- **`caveman`** must never touch the output this gate produces.
+- **`taste-code`** — when the gate fails, fix the cause; a suppression that turns it green is
+  slop the gate now certifies.
 
 ## Verification
 

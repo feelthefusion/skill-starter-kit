@@ -1,0 +1,1 @@
+Active only for the rest of the current task, and only for the final human-facing summary (see Scope above). Off on "stop caveman" / "normal mode", and off by default in every new session — it does not persist across sessions or survive a `/clear`.

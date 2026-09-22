@@ -1,0 +1,2 @@
+# One fingerprint per line: <commit>:<file>:<rule>:<line>  (from `gitleaks git --staged --verbose`)
+# Only for confirmed false positives. A real secret is rotated, never ignored.

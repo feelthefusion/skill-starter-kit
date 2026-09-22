@@ -1,10 +1,6 @@
 ---
 name: caveman-commit
-description: >
-  Ultra-compressed commit message generator. Cuts noise from commit messages while preserving
-  intent and reasoning. Conventional Commits format. Subject ≤50 chars, body only when "why"
-  isn't obvious. Use when user says "write a commit", "commit message", "generate commit",
-  "/commit", or invokes /caveman-commit. Auto-triggers when staging changes.
+description: "Ultra-compressed commit message generator — OPT-IN ONLY (/caveman-commit or \"caveman commit\"). Cuts noise from commit messages while keeping every symbol, path, and reason exact. Never compresses the diff, test output, or the commit body's evidence lines."
 ---
 
 Write commit messages terse and exact. Conventional Commits format. No fluff. Why over what.
@@ -64,6 +60,10 @@ Always include body for: breaking changes, security fixes, data migrations, anyt
 
 Only generates the commit message. Does not run `git commit`, does not stage files, does not amend. Output the message as a code block ready to paste. "stop caveman-commit" or "normal mode": revert to verbose commit style.
 
-Precondition: if the caller then commits staged changes, the security-gate secrets scan
-(`gitleaks git --staged`) must have passed. A leaked credential is not a message-style
-concern, but never emit a message that helps push one.
+## Works with → (kit handoffs)
+
+- Runs **after** `gitleaks git --staged --redact` (`security-gate`) and a green `verify`
+  (`verify-gate`) — compression never skips a gate. `guard.sh` (`guardrails`) blocks
+  `--no-verify` regardless of wording.
+- Superpowers `finishing-a-development-branch` decides *when* to commit; this decides only how
+  terse the message is. PR descriptions (`github-mcp` / `gh`) stay in full prose.

@@ -1,19 +1,23 @@
 # evals — how you find out whether a component earns its keep
 
-The kit is eleven components of prompt-and-plugin surface. Without measurement, every decision
+The kit is twelve components of prompt-and-plugin surface. Without measurement, every decision
 about it is a taste argument — and taste arguments about agent configuration are frequently
 wrong. The cautionary case is not hypothetical: auto-generated `AGENTS.md`/`CLAUDE.md` context
 files were recommended by essentially every agent vendor, then benchmarked (ETH Zurich, on
 SWE-bench Lite) and found **net-negative** — roughly −3% task success and +20% cost. A practice
-everyone endorsed, measured, and wrong.
+everyone endorsed, measured, and wrong. The second study (1,650 real sessions, arXiv
+2605.10039) is the other half of the picture: a *hand-written* instructions file moved
+rule-following from 0% to 68%, while its length, ordering and even self-contradiction changed
+nothing. Read together: **presence of a short human-written `AGENTS.md` helps; generated bulk
+hurts.** That is why the kit ships a 12-line template and no generator.
 
-So: 20 cases, a pass/fail judgement, and an A/B. Small on purpose. Start scoring immediately
+So: 29 cases, a pass/fail judgement, and an A/B. Small on purpose. Start scoring immediately
 rather than waiting for a thorough suite.
 
 ## Use
 
 ```bash
-./run.py cases                        # list all 20
+./run.py cases                        # list all 29
 ./run.py cases --area verify-gate     # one area
 ./run.py score baseline               # walk the cases, record pass/fail
 ./run.py compare baseline no-caveman  # diff two configurations

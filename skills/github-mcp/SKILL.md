@@ -42,7 +42,12 @@ Don't use for:
    { "mcpServers": { "github": { "type": "http",
        "url": "https://api.githubcopilot.com/mcp/" } } }
    ```
-   For review-only context add `"headers": { "X-MCP-Readonly": "true" }`.
+   For review-only context add `"headers": { "X-MCP-Readonly": "true", "X-MCP-Lockdown": "true" }`.
+   **Lockdown mode** (Dec 2025) filters issue/PR content authored by non-collaborators in public
+   repos — the exact channel the Invariant Labs exploit used. Local server: `--read-only
+   --lockdown-mode --toolsets=repos,issues,pull_requests` over **stdio**. Prefer an explicit
+   `--toolsets`/`--tools` allowlist over trusting read-only alone: one release failed to strip
+   write tools over HTTP transport (issue #2156).
 3. **Complete OAuth** when prompted (remote) or set your PAT/GitHub App (local). Verify with a
    `get_me` / context tool that you're the right account and target repo is reachable.
 4. **Restrict toolsets.** Enable only the groups you need via `--toolsets` (local) or the remote
@@ -87,6 +92,16 @@ See the full toolset list in the server README; disable what you don't use.
   opening/merging.
 - **Stale view.** Acting on cached state creates duplicate issues / stale PRs. Fetch and
   re-read the remote object before opening anything.
+
+## Works with →
+- **`guardrails`** — the API-side twin of the deny-list: least privilege enforced by the
+  harness, not by the model's restraint.
+- **`security-gate`** — issue/PR text is untrusted input; findings from Dependabot/code-scanning
+  reached through this server feed the same triage.
+- **Superpowers `finishing-a-development-branch` / `requesting-code-review`** decide *when* to
+  open the PR; this skill is *how*. Only merge after `verify-gate` is green and CI agrees.
+- **`caveman-commit`** (opt-in) can compress the commit *message*, never the PR review or CI
+  output.
 
 ## Verification
 - `get_me` returns the correct authenticated account.

@@ -1,0 +1,18 @@
+# Skill Starter Kit — Hermes shell hooks (the `hooks:` block of ~/.hermes/config.yaml).
+# Apply with `hermes config set` or the dashboard; never hand-edit config.yaml.
+# Scripts: copy skills/guardrails/templates/{guard,format}.sh to ~/.hermes/agent-hooks/.
+# Hermes accepts the Claude Code exit-2 / {"decision":"block"} contract, so the SAME scripts work.
+hooks:
+  pre_tool_call:
+    - matcher: "terminal"
+      command: "~/.hermes/agent-hooks/guard.sh"
+      timeout: 5
+      fail_closed: true            # a crashed guard must not silently allow the call
+  post_tool_call:
+    - matcher: "write_file|patch"
+      command: "~/.hermes/agent-hooks/format.sh"
+      timeout: 30
+  pre_verify:                      # verify-gate: Hermes' Stop-hook equivalent (fires when code was edited)
+    - command: "~/.hermes/agent-hooks/verify-nudge.sh"
+      timeout: 180
+hooks_auto_accept: false           # keep first-use consent prompts

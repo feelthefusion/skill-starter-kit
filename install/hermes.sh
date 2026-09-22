@@ -2,24 +2,26 @@
 # =============================================================================
 # Skill Starter Kit — HERMES installer
 #
-# Installs the kit's portable skills as HERMES skills (instead of Claude Code).
-# Usage:  bash install/hermes.sh
+# Installs the kit's portable skills as HERMES skills. Usage:  bash install/hermes.sh
 #
-# Components installed into ~/.hermes/skills/:
-#   1. Graphify (on-demand orientation)  2. (Superpowers = Claude Code plugin only, skipped)
-#   3. Supermemory (local server still installable — see note)  4. Taste
-#   5. LSP Plugins       skill (copied) — installs LSP per stack at runtime
-#   6. GitHub MCP        skill (copied) — official github/github-mcp-server via gh
-#   7. Caveman           skills (caveman*) — OPT-IN summary compression, not auto-triggered
-#   8. Security Gate     skill (copied) — Anthropic's security plugins are Claude Code only;
-#      the gitleaks + osv-scanner layers work anywhere
-#   9. Verify Gate       skill (copied) — the pass/fail completion gate (portable)
-#  10. Browser Verify    skill (copied) — Playwright/DevTools MCP as plain MCP servers
-#  11. Docs Freshness    skill (copied) — --help/llms.txt ladder; context7 optional
+# Components installed into ~/.hermes/skills/<category>/:
+#   0. AGENTS.md template  (per repo — install/init-project.sh)
+#   1. Graphify            fetched from Graphify-Labs/graphify (on-demand orientation)
+#   2. Superpowers         NATIVE Hermes plugin: `hermes plugins install obra/superpowers --enable`
+#   3. Supermemory         native Hermes memory provider (`memory.provider: supermemory`)
+#   4. Taste               taste-code (kit) + taste-skill (fetched from Leonxlnx/taste-skill)
+#   5. LSP Plugins         skill — manual LSP path on Hermes
+#   6. GitHub MCP          skill — official server via mcp_servers: / gh CLI
+#   7. Caveman             caveman + caveman-commit (fetched from JuliusBrussee/caveman) — OPT-IN
+#   8. Security Gate       skill + gitleaks + osv-scanner (+ zizmor via uvx) — CLI layers work anywhere
+#   9. Verify Gate         skill — pre_verify hook / `/goal gate add` on Hermes
+#  10. Browser Verify      skill — Playwright/DevTools MCP as mcp_servers: entries
+#  11. Docs Freshness      skill — --help/llms.txt ladder; context7 optional
+#  12. Guardrails          skill + hook scripts (pre_tool_call block, post_tool_call format)
 #
-# LIVE BY DESIGN: pulls the kit from GitHub before installing, and REFRESHES
-# already-installed skills instead of skipping them. Re-run it any time to update.
-# Env: KIT_NO_PULL=1 to install the local copy without pulling.
+# LIVE BY DESIGN: pulls the kit from GitHub, FETCHES third-party skills from their upstream
+# repos, re-applies kit overlays, and REFRESHES installed skills in place. Re-run to update.
+# Env: KIT_NO_PULL=1 (skip kit pull) · KIT_NO_UPSTREAM=1 (skip upstream fetch, use vendored)
 # =============================================================================
 set -euo pipefail
 
@@ -37,79 +39,31 @@ echo
 
 # --- 0: pull the latest kit before installing anything ----------------------
 kit_self_update "$KIT_ROOT"
+kit_fetch_upstreams "$KIT_ROOT"
 echo
 
 mkdir -p "$HERMES_SKILLS_DIR/$CATEGORY"
 
-# --- portable skills (Superpowers is a Claude Code plugin -> no Hermes equivalent)
-for skill in graphify taste-skill taste-code caveman caveman-commit caveman-compress caveman-help caveman-review caveman-stats lsp-plugins github-mcp security-gate verify-gate browser-verify docs-freshness; do
-    sync_skill "$KIT_SKILLS_SRC/$skill" "$HERMES_SKILLS_DIR/$CATEGORY/$skill"
+# --- portable skills (upstream-fetched copy when available, vendored otherwise)
+KIT_SKILLS="graphify taste-skill taste-code caveman caveman-commit lsp-plugins github-mcp security-gate verify-gate browser-verify docs-freshness guardrails"
+for skill in $KIT_SKILLS; do
+    sync_skill "$(skill_src "$KIT_ROOT" "$skill")" "$HERMES_SKILLS_DIR/$CATEGORY/$skill"
+done
+# skills removed from the kit are removed from the install too
+for stale in caveman-compress caveman-help caveman-review caveman-stats; do
+    [ -d "$HERMES_SKILLS_DIR/$CATEGORY/$stale" ] && rm -rf "$HERMES_SKILLS_DIR/$CATEGORY/$stale" && echo "  · $stale  removed (dropped from kit v3)"
 done
 
-# --- recall skill: always rewritten so it tracks the current kit
+# --- recall skill: the repo-root SKILL.md is the single source of truth ------------
 RECALL_DST="$HERMES_SKILLS_DIR/$CATEGORY/skill-starter-kit"
 mkdir -p "$RECALL_DST"
-cat > "$RECALL_DST/SKILL.md" <<'MD'
----
-name: skill-starter-kit
-description: "Set up a fresh device with the 11-component Claude Code / Hermes starter kit."
----
-
-# Skill Starter Kit (recall)
-
-Recalled when the user asks to set up a new device, reproduce their environment,
-"install the kit/skills", or rebuild the starter kit.
-
-## Source
-- GitHub: https://github.com/feelthefusion/skill-starter-kit (public)
-- Installer: `install/install.sh` (Claude Code) · `install/hermes.sh` (Hermes)
-
-## The 11 components
-1. Graphify — on-demand orientation for a large unfamiliar repo (`/graphify`). NOT the default
-   retrieval path; LSP + grep are.
-2. Superpowers — Claude Code plugin (obra/superpowers-marketplace) — *Claude Code only*;
-   bundles systematic-debugging + TDD + code-review + worktrees. Never add standalone versions.
-3. Supermemory — plugin + LOCAL self-hosted server on :6767
-4. Taste-Skill — `taste-code` (judgement rules + spike rule; mechanizable rules belong in a
-   hook) + `taste-skill` (anti-slop frontend)
-5. LSP Plugins — official Anthropic LSP plugins, 13 languages. Install per-stack only.
-6. GitHub MCP — official github/github-mcp-server. Read-only by default; `gh` CLI is cheaper.
-7. Caveman — OPT-IN compression of final summaries only. Never the reasoning path, never
-   verification output.
-8. Security Gate — security-guidance + claude-security (Claude Code) + gitleaks (secrets) +
-   osv-scanner (dependency tree / slopsquatting)
-9. **Verify Gate** — one `verify` command + Stop hook + evidence discipline. The only component
-   that blocks a false "done". Set this up FIRST in a new project.
-10. **Browser Verify** — Playwright + Chrome DevTools MCP: screenshot-compare loop, smoke E2E,
-    console/network debugging. Closes the frontend loop.
-11. **Docs Freshness** — `--help`/installed-source/llms.txt/Context7 ladder + verify a package
-    exists before installing a name the model produced from memory.
-
-On Hermes, the portable skills (1, 4, 5, 6, 7, 8, 9, 10, 11) install directly here.
-Component 2 is a Claude Code plugin; 3's local server installs separately; the Anthropic
-plugins in 8/10/11 are Claude Code only — the CLI layers (gitleaks, osv-scanner, npx
-@playwright/mcp, npx chrome-devtools-mcp) work anywhere.
-
-## Rejected on purpose (do not re-add)
-Serena (duplicates LSP + Graphify), spec-kit / OpenSpec / BMAD (duplicate Superpowers'
-workflow), tdd-guard (duplicates bundled TDD), repomix / code2prompt (worse than LSP per
-token), a second memory layer (conflicts with Supermemory), a second docs MCP (Context7 is
-enough).
-
-## Staying current
-Both installers `git pull` the repo before copying and REFRESH already-installed skills in
-place. To update this machine, re-run the installer:
-```bash
-bash ~/skill-starter-kit/install/hermes.sh     # or install/install.sh for Claude Code
-```
-Installed revision is recorded in `.kit-version` next to the installed skills.
-MD
-echo "  · skill-starter-kit (recall)  written ✓"
+cp "$KIT_ROOT/SKILL.md" "$RECALL_DST/SKILL.md"
+echo "  · skill-starter-kit (recall + workflow map)  written ✓"
 write_kit_version "$KIT_ROOT" "$HERMES_SKILLS_DIR/$CATEGORY"
 
-# --- 8/9: portable CLI layers (work on any host, no plugins needed) ----------
+# --- 8/9/12: portable CLI layers (work on any host, no plugins needed) -------
 echo "▶ portable security + verify CLI layers"
-for tool in gitleaks osv-scanner; do
+for tool in gitleaks osv-scanner uv; do
     if command -v "$tool" >/dev/null 2>&1; then
         echo "  · $tool present ✓"
     elif command -v brew >/dev/null 2>&1; then
@@ -130,10 +84,36 @@ else
 fi
 
 echo
+# --- 2: Superpowers — native Hermes plugin (optional; or use Hermes' bundled skills) ------
+echo "▶ Superpowers on Hermes"
+if command -v hermes >/dev/null 2>&1; then
+    if hermes plugins list 2>/dev/null | grep -qi superpowers; then
+        echo "  · superpowers plugin already installed ✓"
+    else
+        echo "  · to install:  hermes plugins install obra/superpowers --enable"
+        echo "    (or rely on Hermes' bundled systematic-debugging / TDD / requesting-code-review / plan"
+        echo "     / spike / simplify-code — one or the other, never both)"
+    fi
+else
+    echo "  · hermes CLI not on PATH — install Superpowers later: hermes plugins install obra/superpowers --enable"
+fi
+
+# --- 12: Guardrails hook scripts → ~/.hermes/agent-hooks (config applied by you) ---------
+HOOKS_DIR="${HERMES_HOME:-$HOME/.hermes}/agent-hooks"
+mkdir -p "$HOOKS_DIR"
+for s in guard.sh format.sh verify-nudge.sh; do
+    cp "$KIT_SKILLS_SRC/guardrails/templates/$s" "$HOOKS_DIR/$s" && chmod +x "$HOOKS_DIR/$s"
+done
+echo "▶ guardrails hook scripts → $HOOKS_DIR ✓"
+echo "  · wire them with the hooks: block in skills/guardrails/templates/hermes-hooks.yaml"
+echo "    (apply via \`hermes config set\`; consent prompt on first use is expected)"
+
+echo
 echo "─── done ───────────────────────────────────────────────"
 echo "Installed skills: $(ls "$HERMES_SKILLS_DIR/$CATEGORY" | tr '\n' ' ')"
 echo "A NEW Hermes session is required for the skills to appear (skill index loads at session start)."
 echo "Then say:  'set up the skill starter kit' / 'recall the kit'."
+echo "In each repo:  bash $KIT_ROOT/install/init-project.sh   (AGENTS.md, verify.sh, hooks, .npmrc)"
 echo
 echo "To update later, just re-run this installer — it pulls the kit from GitHub"
 echo "and refreshes every installed skill in place."

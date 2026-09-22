@@ -1,161 +1,169 @@
 # Skill Starter Kit
 
-One command to bootstrap a fresh Claude Code machine with the starter stack: a deterministic
-completion gate, browser-based verification, fresh library docs, multi-session memory, a
-structured workflow, anti-slop taste, per-stack language servers, official GitHub tooling, and
-a four-layer security gate.
+One command to bootstrap a fresh Claude Code **or Hermes** machine with the starter stack, and
+one command to arm a new repo: a deterministic completion gate, action guardrails, browser-based
+verification, fresh library docs, install hygiene, multi-session memory, a structured workflow,
+anti-slop taste, per-stack language servers, official GitHub tooling, and a five-layer security
+gate — wired so each component hands off to the next.
 
-> **v2 (audit pass).** The kit is **11 components**. Three were added because they close real
-> loops — `verify-gate` (nothing else produced a pass/fail that blocks a false "done"),
-> `browser-verify` (the frontend skill had no way to *see* its output), and `docs-freshness`
-> (nothing knew what shipped in a library last month). Two were scoped down because the
-> evidence went against them: **Caveman no longer auto-triggers** (brevity instructions
-> measurably reduce factual accuracy, and the mechanism — no room to push back on a false
-> premise — is exactly what a coding agent needs) and **Graphify is no longer the default
-> retrieval path** (LSP + grep are compiler-accurate and never stale). GSD was removed earlier;
-> Superpowers already owns sub-agent orchestration.
+> **v3 (deep-research pass).** The kit is **12 components + a project template**. Added because
+> they close loops deterministically: **Guardrails** (nothing gated *actions* — `rm -rf`, force
+> push, reading `.env`, `curl | sh`; now a PreToolUse hook + deny-list + OS sandbox, and the
+> PostToolUse formatter that `taste-code` always promised), **install hygiene** inside the
+> security gate (release-age cooldowns, `ignore-scripts`, frozen lockfiles, `zizmor` — the days
+> before a malicious release is reported are the one window scanners can't see), and an
+> **`AGENTS.md` template** (presence moves rule-following 0 → 68%; length does nothing, so it's
+> 12 lines). Trimmed: Caveman to two skills. Fixed: the Hermes story — Superpowers, hooks,
+> `/goal gate`, MCP and Supermemory all have native Hermes paths now. **Third-party skills are
+> fetched from their upstream repos at install time**, with the kit's scoping re-applied as
+> overlays, so a fresh install is never behind upstream. Every kit-owned skill now ends with a
+> **Works with →** section naming its handoffs; the root `SKILL.md` carries the full workflow map.
 
 ## The components
 
-| # | Name | Kind | What it does |
-|---|------|------|--------------|
-| 1 | **Graphify** | skill | **On-demand** orientation in a large unfamiliar repo, cross-repo maps, and non-code corpora (docs/papers/images/video) → knowledge graph. Trigger: `/graphify`. Not the default retrieval path — LSP + grep are, because a stale graph is worse than none. |
-| 2 | **Superpowers** | plugin (obra/superpowers-marketplace) | Enforces a structured multi-phase workflow (brainstorm → plan → execute → review → finish) to stop drift and repeated file reads. Owns sub-agent orchestration. **Bundles 15 skills including systematic-debugging, test-driven-development, requesting/receiving-code-review, git-worktrees and verification-before-completion** — never add standalone versions of these. Also listed as `superpowers@claude-plugins-official`; enable one source, not both. |
-| 3 | **Supermemory** | plugin + LOCAL self-hosted server | Persists project context, user preferences, and state. Runs a local server on `:6767` (keeps data on your machine, works fully offline). |
-| 4 | **Taste-Skill** | skills (`taste-code` + `taste-skill`) | Anti-slop harness: `taste-code` injects 10 minimalist structural rules against boilerplate, placeholder noise, redundant try/catch logs, and over-engineered architecture; `taste-skill` is the anti-slop frontend companion. |
-| 5 | **LSP Plugins** | skill | Compiler-accurate types, definitions, references and post-edit diagnostics via Anthropic's **official** per-language LSP plugins — **13 languages**. Plugin wires the connection, you install the server binary. **Install per-stack only**; a Python repo shouldn't pay context for `gopls`. |
-| 6 | **GitHub MCP** | skill → official server | GitHub's **official** `github/github-mcp-server` for issues, PRs, reviews, branches, actions. **Read-only by default, per-project, token scoped to one repo** — it reads attacker-controllable issue text into an agent with write access, which is a demonstrated exfiltration path. `gh` CLI is the cheaper default. |
-| 7 | **Caveman** | skills (`caveman*`) | **Opt-in only** (`/caveman`) compression of *final human-facing summaries*. Never the reasoning path, never tool-result interpretation, never verification output — test/build/lint output is pasted verbatim. Does not persist across sessions. |
-| 8 | **Security Gate** | skill → official plugins + CLIs | Four layers: `security-guidance` (official — security-relevant edits), `claude-security` (official — on-demand CWE-classified deep scan, SARIF), **gitleaks** (literal credentials in staged diffs), and **osv-scanner** (the dependency tree — the one supply-chain vector the agent itself creates via hallucinated package names). Findings are de-duplicated across layers. |
-| 9 | **Verify Gate** ⭐ | skill + `hookify` | One `verify` command (typecheck + lint + test + build + dep audit) wired to a **Stop hook**, so a turn cannot end while it fails, plus evidence discipline: paste the command and its real output, never "tests pass". **The only component that blocks a false "done" — set it up first in a new project.** |
-| 10 | **Browser Verify** | skill → `playwright` + `chrome-devtools-mcp` | Lets the agent *see* what it built: render → screenshot → diff against the design → name the differences → fix → re-screenshot. Plus a smoke E2E spec in the `verify` gate, and console/network/DOM debugging instead of guessing. |
-| 11 | **Docs Freshness** | skill → `context7` (optional) | The model's weights are older than your lockfile. A cheapest-first ladder — `--help` → installed source → allowlisted doc URL → `llms.txt` → Context7 → DeepWiki — plus: never install a package name the model produced from memory without checking it exists. |
+| # | Name | Kind | What it does | Gate? |
+|---|------|------|--------------|-------|
+| 0 | **`AGENTS.md`** template | file (per repo) | ≤12 hand-written bullets the agent cannot infer: the `verify` command, stack/package manager, forbidden operations, where plans live. `CLAUDE.md` is a one-line pointer to it. Never auto-generated (auto-generated context files measurably *hurt*). | — |
+| 1 | **Graphify** | skill ← `Graphify-Labs/graphify` | **On-demand** orientation in a large unfamiliar repo, cross-repo maps, non-code corpora → knowledge graph. `/graphify`. Not the default retrieval path — LSP + grep are. | — |
+| 2 | **Superpowers** | plugin — **Claude Code and Hermes** | brainstorm → plan → execute → review → finish. Bundles TDD, systematic-debugging, code-review, git-worktrees, verification-before-completion — never add standalone versions. Hermes: `hermes plugins install obra/superpowers --enable`, *or* use Hermes' bundled equivalents; never both. | — |
+| 3 | **Supermemory** | plugin + LOCAL server (`:6767`) | Cross-session memory of decisions and preferences. On Hermes it is a native memory provider (`memory.provider: supermemory`). | — |
+| 4 | **Taste** | skills (`taste-code` + `design-taste-frontend` ← `Leonxlnx/taste-skill`) | Anti-slop: judgement rules against boilerplate, placeholder noise, defensive try/catch and over-architecture; spike rule; permission to reject reviewer findings. Rules 8/10 are **mechanized** by Guardrails' `format.sh`. | — |
+| 5 | **LSP plugins** | skill → official plugins | Compiler-accurate types/refs/diagnostics. **12 Anthropic plugins + Shopify's `liquid-lsp`.** Per stack only. | per file |
+| 6 | **GitHub MCP** | skill → official server | `github/github-mcp-server`, **read-only + lockdown mode + explicit toolsets**, repo-scoped token, per project. `gh` CLI is the cheap default. | — |
+| 7 | **Caveman** | skills (`caveman`, `caveman-commit` ← `JuliusBrussee/caveman`) | **Opt-in only** compression of the *final summary*. Never reasoning, never tool output, never verification output. | — |
+| 8 | **Security Gate** | skill → official plugins + CLIs | Five layers: `security-guidance` · `claude-security` · **gitleaks** (`--redact`) · **osv-scanner** (CVEs **and** known-malicious `MAL-*` packages) · **install hygiene** (`min-release-age`, `ignore-scripts`, `npm ci`/`--locked`, **zizmor** for Actions). Honest table of which layers are gates and which are prose. | layers 3–5 |
+| 9 | **Verify Gate** ⭐ | skill + hook | One `verify` command (locked install → typecheck → lint → test → build → osv → zizmor → smoke spec) wired to the **Stop hook** (Claude Code) or **`pre_verify` hook / `/goal gate`** (Hermes). Evidence discipline: paste real output. | **yes** |
+| 10 | **Browser Verify** | skill → `playwright` + `chrome-devtools-mcp` | See what was built: render → screenshot → diff against the design → fix → re-shoot. Smoke spec in `verify`; console/network instead of guessing. | smoke spec |
+| 11 | **Docs Freshness** | skill → `context7` (optional) | `--help` → installed source → `llms.txt` → Context7 → DeepWiki. Never install a package name produced from memory without checking it exists. | — |
+| 12 | **Guardrails** ⭐ | skill + hooks + settings | `guard.sh` (PreToolUse: blocks recursive deletes outside the repo, force-push/reset, `--no-verify`, secret reads, `curl \| sh`, publishing, prod DB drops), `format.sh` (PostToolUse: biome/prettier/ruff/gofmt/rustfmt), `permissions.deny`, OS **sandbox** with `failIfUnavailable`. **Same scripts on both hosts.** | **yes** |
 
-## Quick start (fresh device)
+## How they work together
 
-**Always-latest one-liner** (clones or updates `~/.skill-starter-kit`, then installs):
+The root [`SKILL.md`](SKILL.md) is the workflow map. Short version of a feature, end to end:
+
+1. **Orient** with LSP + grep (5); Graphify (1) only for a large unfamiliar repo.
+2. **Shape** with Superpowers brainstorm → plan (2); `taste-code` rule 4 on the plan (4); recall from Supermemory (3).
+3. **Before any dependency**: stdlib first (4) → does it exist / is it the one I meant (11) → is it old enough, scripts off, locked (8). The package manager enforces the last one even if the agent forgets.
+4. **Build**: TDD (2) · current API (11) · taste shapes it (4) · `format.sh` after every edit (12) · LSP diagnostics (5) · `guard.sh` blocks the irreversible (12).
+5. **See it**: design-taste (4) → browser compare loop (10); bugs via systematic-debugging (2) with DevTools evidence (10).
+6. **Prove it**: `verify` at turn end (9); fix causes, never suppress (4); output verbatim, Caveman hands off (7).
+7. **Review**: fresh-context code review (2); reject findings that violate taste (4); `/claude-security` before a PR (8).
+8. **Ship**: gitleaks → commit (`caveman-commit` opt-in) → PR via `gh` / GitHub MCP (6) → merge when CI agrees with `verify`.
+9. **Remember**: Supermemory (3), `AGENTS.md` (0), or a skill.
+
+Every kit-owned skill ends with a **Works with →** section stating exactly these handoffs, so
+the component you're in tells you which one is next.
+
+## Quick start
+
+**Fresh device — always latest:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/feelthefusion/skill-starter-kit/main/install/bootstrap.sh | bash
-# Hermes instead of Claude Code:
-curl -fsSL https://raw.githubusercontent.com/feelthefusion/skill-starter-kit/main/install/bootstrap.sh | bash -s -- hermes
+curl -fsSL https://raw.githubusercontent.com/feelthefusion/skill-starter-kit/main/install/bootstrap.sh | bash              # Claude Code
+curl -fsSL https://raw.githubusercontent.com/feelthefusion/skill-starter-kit/main/install/bootstrap.sh | bash -s -- hermes # Hermes
 ```
+Or `git clone https://github.com/feelthefusion/skill-starter-kit.git && bash skill-starter-kit/install/install.sh` (`hermes.sh` for Hermes).
 
-### Claude Code
-```bash
-git clone https://github.com/feelthefusion/skill-starter-kit.git
-cd skill-starter-kit
-bash install/install.sh
-```
-Then inside Claude Code:
+**Claude Code, then inside the session:**
 ```
 /plugin install superpowers@superpowers-marketplace
 /plugin install supermemory@supermemory-plugins
 /plugin install security-guidance@claude-plugins-official
 /plugin install claude-security@claude-plugins-official
-/plugin install hookify@claude-plugins-official
 /plugin install playwright@claude-plugins-official
 /plugin install chrome-devtools-mcp@claude-plugins-official
 ```
-…and restart. Then **per-project, not globally**: the matching `<lang>-lsp` plugin,
-`context7` (docs), and GitHub MCP — each costs context in every session it's enabled.
+Restart. Then **per project, never global**: the matching `<lang>-lsp`, `context7`, GitHub MCP.
+Optional: `claude-md-management` (`/revise-claude-md` folds session learnings into `AGENTS.md`)
+and `session-report` (measures the startup-context claim below).
 
-### First thing in a new project
+**Hermes:** open a new session (skill index loads at start), then optionally
+`hermes plugins install obra/superpowers --enable` and
+`hermes config set memory.provider supermemory`. Guardrails scripts land in
+`~/.hermes/agent-hooks/`; wire them with `skills/guardrails/templates/hermes-hooks.yaml`.
+
+### First thing in a new repo
 ```bash
-cp ~/skill-starter-kit/skills/verify-gate/templates/verify.sh ./verify.sh && chmod +x verify.sh
+bash ~/skill-starter-kit/install/init-project.sh
 ```
-Trim it to the checks your stack actually has, then wire the Stop hook (see the `verify-gate`
-skill). Until that exists, nothing in the kit can stop the agent from claiming success.
-
-### Hermes
-```bash
-git clone https://github.com/feelthefusion/skill-starter-kit.git
-cd skill-starter-kit
-bash install/hermes.sh          # installs the portable skills + recall skill into ~/.hermes/skills/
-```
-Then open a **new Hermes session** and say **"set up the skill starter kit"**. (Hermes's
-skill index loads at session start, so a new session is required.)
-
-> On Hermes, the portable skills (Graphify, Taste, Caveman, LSP, GitHub MCP, Security Gate,
-> Verify Gate, Browser Verify, Docs Freshness) install directly. Superpowers is a Claude Code
-> plugin with no Hermes equivalent; Supermemory's local server installs separately. The
-> Anthropic plugins are Claude Code only — but every CLI layer works anywhere: `gitleaks`,
-> `osv-scanner`, `npx @playwright/mcp@latest`, `npx chrome-devtools-mcp@latest`.
-
-The installers are **live, not pinned** — see [Staying current](#staying-current). See
-`/install/install.sh` (Claude Code) and `/install/hermes.sh` (Hermes); the `SKILL.md` at the
-repo root is the recall skill that itself knows how to run all of this.
+Writes `AGENTS.md` (+ `CLAUDE.md` pointer), `verify.sh`, `.claude/settings.json` (Stop hook +
+guardrails hooks + deny-list + sandbox), `.claude/hooks/{guard,format}.sh`, and the install-hygiene
+config for your package manager (`.npmrc` / `pnpm-workspace.yaml` / `.yarnrc.yml` / `bunfig.toml`).
+Never overwrites existing files. Then: edit `AGENTS.md`, trim `verify.sh`, **break something and
+confirm the gate blocks the turn**, add your stack's irreversible commands to `guard.sh`, commit.
 
 ## Staying current
 
-Nothing in the kit is version-pinned; every install pulls the latest:
+Nothing is version-pinned; every install pulls the latest **at every layer**:
 
 | Layer | How it stays live |
 |-------|-------------------|
-| Kit skills (Graphify, Taste, Caveman, LSP, GitHub MCP, Security Gate, Verify Gate, Browser Verify, Docs Freshness) | Installers run `git pull --ff-only` on the repo first, then **refresh** installed skills in place — a re-run updates them instead of skipping |
-| Plugins (Superpowers, Supermemory, security-guidance, claude-security, hookify, playwright, chrome-devtools-mcp, context7, LSP plugins) | Registered by **GitHub repo, never a pinned ref** — Claude Code fetches the current version from origin |
-| Supermemory server binary | Installer re-runs the upstream `supermemory.ai/install` script each time, so the binary tracks the latest release |
-| GitHub MCP | Points at the official remote endpoint (`api.githubcopilot.com/mcp/`), auto-updated server-side |
+| Kit-owned skills (taste-code, LSP, GitHub MCP, Security Gate, Verify Gate, Browser Verify, Docs Freshness, Guardrails, recall) | `git pull --ff-only` on the kit, then installed copies are **refreshed in place** |
+| **Third-party skills** (Graphify, Caveman, Taste) | **Fetched from their upstream repo on every install** (`install/upstreams.tsv`), kit scoping re-applied from `install/overlays/`, upstream commit recorded in `.upstream`. Offline → falls back to the vendored copy in `skills/`. `install/refresh-vendored.sh` updates the vendored copies for committing. |
+| Plugins (Superpowers, Supermemory, Anthropic plugins, LSP) | Registered by GitHub repo, never a pinned ref; `/plugin` refreshes |
+| Supermemory server | Upstream install script re-runs each time |
+| GitHub MCP | Official remote endpoint, updated server-side |
+| CLIs (gitleaks, osv-scanner, uv/zizmor) | `brew install` if missing; `brew upgrade` is yours |
 
-**To update any machine, just re-run the installer** (or the bootstrap one-liner):
-```bash
-bash ~/skill-starter-kit/install/install.sh    # Claude Code
-bash ~/skill-starter-kit/install/hermes.sh     # Hermes
-```
-The installed revision is written to `.kit-version` beside the installed skills, so you can
-always see what's deployed. Inside Claude Code, `/plugin` refreshes plugins and
-`/reload-plugins` applies changes without a restart.
-
-Notes:
-- **Local edits to *installed* skill copies are overwritten** on refresh — edit skills in the
-  repo (that's the source of truth), then re-run.
-- If the repo working tree is dirty, the installer **skips the pull** rather than clobber your
-  uncommitted work, and installs the local copy.
-- Offline, or a diverged branch: the pull fails soft and the local copy installs.
-- `KIT_NO_PULL=1` installs the local copy without pulling.
+Re-run the installer to update any machine. `KIT_NO_PULL=1` skips the kit pull;
+`KIT_NO_UPSTREAM=1` installs vendored copies only. Dirty tree → pull skipped; offline → soft-fail
+to local copies. Edits to *installed* copies are overwritten — edit in the repo (kit-owned) or in
+`install/overlays/` (third-party).
 
 ## Deliberately rejected
 
-Recorded so they don't get re-litigated. All are good tools; all either duplicate a chosen
-component or fail the context budget.
+All good tools; each duplicates a chosen component, fails the context budget, or doesn't close an
+*agent* loop.
 
 | Candidate | Why not |
 |-----------|---------|
-| **Serena MCP** | Duplicates the official LSP plugins *and* Graphify, plus a third memory layer. Heaviest tool-schema cost surveyed. |
-| **GitHub spec-kit**, **OpenSpec**, **BMAD** | Duplicate Superpowers' multi-phase workflow wholesale. Two process frameworks is strictly worse than one — swap *to*, never stack. |
-| **tdd-guard** | Duplicates Superpowers' bundled `test-driven-development`. |
-| **repomix**, **code2prompt** | Whole-repo context packing: more context to do less than LSP. |
-| **claude-mem**, **mempalace** | Second memory layer → conflicting recall with Supermemory. |
-| **Ref** | Overlaps Context7; only wins on *private* docs, and needs an API key. |
-| **Semgrep** | Partially overlaps the security gate. OSV filled a real hole; this mostly doesn't. Add it as a CI gate if you want org-specific rules. |
+| **Serena MCP** | Duplicates LSP plugins *and* Graphify, plus a third memory layer; heaviest schema cost surveyed. |
+| **spec-kit**, **OpenSpec**, **BMAD** | Duplicate Superpowers' workflow. Swap *to*, never stack. |
+| **tdd-guard**, official **`feature-dev`**, **`code-review`**, **`pr-review-toolkit`**, **`code-simplifier`**, **`commit-commands`**, **`skill-creator`**, **`plugin-dev`** | Duplicate what Superpowers bundles (TDD, review, plan→execute, skill authoring). |
+| **`ralph-loop`** | A second Stop-hook loop that fights the Verify Gate's. Hermes `/goal` is the sanctioned loop. |
+| official **`frontend-design`**, **`webapp-testing`** | Duplicate `design-taste-frontend` / Browser Verify. |
+| **`explanatory-`/`learning-output-style`**, **`discernment-nudge`** | Per-turn injected prose; violate the <15% rule. |
+| **repomix**, **code2prompt** | Whole-repo packing: more context to do less than LSP. |
+| **claude-mem**, **mempalace**, **`remember`**, **mattpocock-skills** | Second memory layer / duplicate TDD + review. |
+| **Ref** | Overlaps Context7; wins only on private docs, needs a key. |
+| **Semgrep**, **SonarQube plugin** | Partial overlap with the security gate; SonarQube needs a server + always-on MCP. Fine as CI. |
+| **TruffleHog**, **detect-secrets** | Slower/network-verified; unmaintained. gitleaks is enough. |
+| **Socket** (as default), **Trivy**, **Grype**, **pip-audit**, `uv audit` | SaaS account; container-focused overlap; OSV-redundant; preview. |
+| **SBOM / SLSA / sigstore** | Producer-side value only; revisit if the kit publishes packages. |
+| Mutation testing, Lighthouse CI, ADR tooling, devcontainers, Renovate | Good CI additions; none closes an *agent* loop. |
+| Community "guardrail" frameworks | 0–2 stars, no third-party review. The kit's Guardrails is native hooks + settings only. |
 | **zen-mcp**, **semgrep/mcp**, **trivy-mcp**, **cc-statusline** | Stale or archived. |
-| Community "guardrail" frameworks | Every candidate had 0–2 stars and no third-party review. Use native `settings.json` deny rules + one small `PreToolUse` hook. |
 
 ## Context budget
 
-The kit's dominant failure mode is context exhaustion, not missing capability — performance
-degrades as the window fills, and tool definitions alone can cost tens of thousands of tokens
-before the agent reads your first request. So:
+The dominant failure mode is context exhaustion, not missing capability.
 
-- Run `/context` on a fresh session with the kit installed and know the number.
-- Target **startup context under ~15%** of the window.
-- Any new component must justify its share. Three things are **per-project, never global**:
-  the `<lang>-lsp` plugin, `context7`, and GitHub MCP.
-- `/clear` between unrelated tasks. The kitchen-sink session is a real failure mode.
+- `/context` on a fresh session; target **startup context under ~15%**. `session-report`
+  (optional, official) measures it.
+- Guardrails, hooks, deny rules and the sandbox cost **zero** standing context — that is why they
+  are preferred over prose.
+- Per project, never global: `<lang>-lsp`, `context7`, GitHub MCP.
+- `/clear` between unrelated tasks.
 
 ## Requirements
-- macOS or Linux (launchd auto-start is macOS-only; Linux runs `supermemory-server` manually)
-- Node.js 18+ on PATH (Claude Code + Supermemory plugin need it)
-- `gh` CLI (GitHub token) — auth verification for the official GitHub MCP
-- `gitleaks` + `osv-scanner` (installers `brew install` both) — Security Gate layers 3 and 4
+- macOS or Linux (launchd auto-start is macOS-only)
+- Node.js 18+, `gh` CLI (authenticated)
+- `gitleaks`, `osv-scanner`, `uv` (for `uvx zizmor`) — installers `brew install` them if missing
+- Claude Code sandbox: macOS Seatbelt built in; Linux needs `bubblewrap` + `socat`
 
 ## Directory layout
 ```
-├── SKILL.md            # recall skill — installs/loads the whole kit
+├── SKILL.md                 # recall skill + workflow map (single source; installers copy it)
 ├── install/
-│   ├── bootstrap.sh    # curl-able: clone-or-pull latest, then install
-│   ├── lib.sh          # shared: self-update (git pull) + refresh-in-place sync
-│   ├── install.sh      # live bootstrap/update for Claude Code
-│   └── hermes.sh       # live bootstrap/update for Hermes (~/.hermes/skills/)
-├── skills/             # the portable skill files (copied to ~/.claude/skills/ or ~/.hermes/skills/)
-└── evals/              # ~20 task cases + runner: how you prove a component earns its keep
+│   ├── bootstrap.sh         # curl-able: clone-or-pull latest, then install
+│   ├── lib.sh               # self-update, UPSTREAM FETCH + overlays, refresh-in-place sync
+│   ├── upstreams.tsv        # skill → upstream repo/ref/path
+│   ├── overlays/<skill>/    # kit scoping re-applied over fresh upstream (description, PREPEND, replace/)
+│   ├── refresh-vendored.sh  # maintainer: pull upstream into skills/ for committing
+│   ├── install.sh           # Claude Code
+│   ├── hermes.sh            # Hermes
+│   └── init-project.sh      # per repo: AGENTS.md, verify.sh, hooks, settings, .npmrc
+├── skills/                  # portable skills (kit-owned + vendored fallbacks)
+│   └── guardrails/templates # guard.sh, format.sh, verify-nudge.sh, claude-settings.json, hermes-hooks.yaml
+├── templates/project/       # AGENTS.md, CLAUDE.md, .npmrc, pnpm-workspace.yaml, .yarnrc.yml, bunfig.toml
+└── evals/                   # task cases + runner: how you prove a component earns its keep
 ```

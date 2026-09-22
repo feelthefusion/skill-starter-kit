@@ -1204,3 +1204,14 @@ But that is **web glassmorphism / frosted-glass approximation**, not official Ap
 ---
 
 **End of appendices.** Install commands above are reality anchors. The Apple Liquid Glass skeleton is a labeled approximation, not an Apple-issued package. For canonical docs per design system, consult the system's official docs (links in Section 2 plus Appendix B).
+
+## Works with → (kit handoffs)
+
+- **`browser-verify`** is the only way to check anything above actually rendered: after every
+  design pass run the screenshot → compare → name the difference → fix loop, and keep one smoke
+  spec in `verify` (**`verify-gate`**).
+- **`taste-code`** governs the code behind the UI (no placeholder components, no defensive
+  wrappers around fetches). These rules govern what the user sees; both apply at once.
+- **`docs-freshness`** — CSS/framework APIs move fast (container queries, `@scope`, view
+  transitions); confirm the current API before reaching for a library or a polyfill.
+- **`guardrails`** `format.sh` runs the repo's formatter after each edit — don't hand-format.

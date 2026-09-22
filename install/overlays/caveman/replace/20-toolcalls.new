@@ -1,0 +1,1 @@
+Tool-call phase: this mode does not apply. Reasoning, plans, tool narration and verification output stay in the host's normal register (kit scope). Compress only the final summary.

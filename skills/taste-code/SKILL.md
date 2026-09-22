@@ -52,8 +52,10 @@ learned. This is rule 4 applied to process: no speculative code in the tree.
 Prose rules are advisory: they get dropped as context fills, and they cost tokens in every
 session whether or not they fire. Several of the 10 are **mechanically checkable** — rule 8
 (unused imports/variables/args), rule 10 (formatting), and part of rule 2 (placeholder
-scaffolding) — so enforce those in a PostToolUse formatter/linter hook instead of here.
-Deterministic, zero standing context, no reliance on the model remembering.
+scaffolding) — so they are enforced in a PostToolUse formatter/linter hook instead of here.
+**The kit ships that hook: `guardrails/templates/format.sh`** (biome/prettier/ruff/gofmt/rustfmt,
+whichever the repo already uses; `ruff --fix` and `biome check --write` also remove unused
+imports). Deterministic, zero standing context, no reliance on the model remembering.
 
 What stays as text is only what needs judgement: rules 1, 4, 6, 7 (smallest correct unit, no
 over-engineering, explicit over clever, naming says what it is). A hook cannot decide whether
@@ -94,6 +96,17 @@ Don't use for:
 - **Conventions win.** Rule 10 exists because breaking the file's existing style is itself
   noise; match what's there even when you'd format differently.
 - **Descriptions shaped like praise** ("minimalist!") add nothing — follow the rules literally.
+
+## Works with →
+- **`guardrails`** — rules 8 and 10 run as `format.sh` after every edit; `guard.sh` allows
+  `rm -rf $TMPDIR/spike-*` so the spike rule works.
+- **Superpowers `brainstorming` / `writing-plans`** decide *what* to build; these rules decide
+  how small it should be. Apply rule 4 to the plan itself.
+- **`docs-freshness`** — rule 5 (prefer stdlib) is the first question before any dependency.
+- **Superpowers `receiving-code-review`** — you have standing permission to reject a finding
+  that violates these rules; say which rule.
+- **`security-gate`** — rule 3 forbids closing a scanner finding with try/catch.
+- **`verify-gate`** — the gate must go green by fixing causes, not by suppression.
 
 ## Verification
 - The change is the smallest that satisfies the request (no unused imports/vars/params).

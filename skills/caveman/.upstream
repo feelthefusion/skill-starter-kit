@@ -1,0 +1,5 @@
+upstream: JuliusBrussee/caveman
+ref: main
+path: skills/caveman
+commit: 2fd153c
+fetched: 2026-09-22T10:39:20Z
