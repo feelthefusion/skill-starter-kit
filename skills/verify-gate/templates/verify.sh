@@ -45,15 +45,19 @@ step "build"
 npm run build                       # or: go build ./... / cargo build --release
 
 step "dependency audit"             # security-gate layer 4: CVEs + known-malicious (MAL-*) packages
-if curl -sS -m 4 -o /dev/null https://api.osv.dev/ 2>/dev/null || [ -n "${CI:-}" ]; then
+if ! command -v osv-scanner >/dev/null 2>&1; then
+  echo "⚠ dependency audit skipped: osv-scanner not installed (kit installer adds it; brew/GitHub releases)."
+elif curl -sS -m 4 -o /dev/null https://api.osv.dev/ 2>/dev/null || [ -n "${CI:-}" ]; then
   osv-scanner scan source -r .
 else                                # a sandboxed hook has no network: skip VISIBLY, never `|| true`
   echo "⚠ dependency audit skipped: no network here (sandboxed hook). Runs in CI and when verify has network."
 fi
 
-if [ -d .github/workflows ]; then
+if [ -d .github/workflows ] && command -v uvx >/dev/null 2>&1; then
   step "github actions lint"        # security-gate layer 5
   uvx zizmor --min-severity medium .github/workflows
+elif [ -d .github/workflows ]; then
+  echo "⚠ actions lint skipped: uvx not installed (kit installer adds uv)."
 fi
 
 if [ -f playwright.config.ts ] || [ -f playwright.config.js ]; then

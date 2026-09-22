@@ -178,37 +178,13 @@ print("  · official Anthropic marketplace + security plugins registered ✓")
 PY
 # optional secrets layer
 # 8b. gitleaks — literal-secrets layer (the plugins cover patterns, not credentials)
-if command -v gitleaks >/dev/null 2>&1; then
-    echo "  · gitleaks $(gitleaks version 2>/dev/null || echo present) ✓"
-elif command -v brew >/dev/null 2>&1; then
-    echo "  · installing gitleaks (secrets scanner) …"
-    brew install gitleaks >/dev/null 2>&1 \
-        && echo "  · gitleaks installed ✓" \
-        || echo "  ⚠ brew install gitleaks failed — install manually: brew install gitleaks"
-else
-    echo "  ⚠ gitleaks missing and no brew — see https://github.com/gitleaks/gitleaks#installing"
-fi
+ensure_cli_tool gitleaks
 
 # 8c. osv-scanner — dependency-tree layer (layer 4: the code you INSTALLED)
-if command -v osv-scanner >/dev/null 2>&1; then
-    echo "  · osv-scanner present ✓"
-elif command -v brew >/dev/null 2>&1; then
-    echo "  · installing osv-scanner (dependency/supply-chain scanner) …"
-    brew install osv-scanner >/dev/null 2>&1 \
-        && echo "  · osv-scanner installed ✓" \
-        || echo "  ⚠ brew install osv-scanner failed — install manually: brew install osv-scanner"
-else
-    echo "  ⚠ osv-scanner missing and no brew — see https://github.com/google/osv-scanner"
-fi
+ensure_cli_tool osv-scanner
 
 # 8d. uv — runs zizmor (`uvx zizmor`) for the GitHub Actions layer, and `uv sync --locked`
-if command -v uv >/dev/null 2>&1; then
-    echo "  · uv present ✓ (zizmor runs via uvx in verify.sh)"
-elif command -v brew >/dev/null 2>&1; then
-    brew install uv >/dev/null 2>&1 && echo "  · uv installed ✓" || echo "  ⚠ brew install uv failed — https://docs.astral.sh/uv/"
-else
-    echo "  ⚠ uv missing — install from https://docs.astral.sh/uv/ (needed for uvx zizmor)"
-fi
+ensure_cli_tool uv
 
 # --- 9,10,11: Verify Gate / Browser Verify / Docs Freshness plugins ----------
 # All four live in the OFFICIAL Anthropic marketplace (registered above).

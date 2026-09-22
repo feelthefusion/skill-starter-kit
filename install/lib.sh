@@ -49,6 +49,44 @@ kit_self_update() {
 }
 
 # -----------------------------------------------------------------------------
+# CLI TOOL INSTALL — brew when present, otherwise GitHub release binaries into
+# ~/.local/bin (Linux has no brew by default; without this every generated
+# verify.sh is permanently RED at the dependency-audit step).
+# -----------------------------------------------------------------------------
+ensure_cli_tool() {  # ensure_cli_tool <gitleaks|osv-scanner|uv>
+    local tool="$1"
+    command -v "$tool" >/dev/null 2>&1 && { echo "  · $tool present ✓"; return 0; }
+    if command -v brew >/dev/null 2>&1; then
+        brew install "$tool" >/dev/null 2>&1 && { echo "  · $tool installed (brew) ✓"; return 0; }
+    fi
+    local bin="$HOME/.local/bin" os arch
+    mkdir -p "$bin"
+    os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+    case "$(uname -m)" in x86_64|amd64) arch=amd64;; aarch64|arm64) arch=arm64;; *) arch="";; esac
+    if [ -z "$arch" ]; then echo "  ⚠ $tool: unsupported arch $(uname -m) — install manually"; return 1; fi
+    case "$tool" in
+        uv)
+            curl -LsSf https://astral.sh/uv/install.sh 2>/dev/null | env UV_INSTALL_DIR="$bin" sh >/dev/null 2>&1 \
+                && { echo "  · uv installed → $bin ✓"; return 0; } ;;
+        osv-scanner)
+            local url
+            url="$(curl -fsSL https://api.github.com/repos/google/osv-scanner/releases/latest 2>/dev/null \
+                   | grep -o "\"browser_download_url\": *\"[^\"]*osv-scanner_${os}_${arch}\"" | head -1 | grep -o 'https[^"]*')"
+            [ -n "$url" ] && curl -fsSL "$url" -o "$bin/osv-scanner" 2>/dev/null && chmod +x "$bin/osv-scanner" \
+                && { echo "  · osv-scanner installed → $bin ✓"; return 0; } ;;
+        gitleaks)
+            local gl_arch="$arch"; [ "$arch" = amd64 ] && gl_arch=x64
+            local url
+            url="$(curl -fsSL https://api.github.com/repos/gitleaks/gitleaks/releases/latest 2>/dev/null \
+                   | grep -o "\"browser_download_url\": *\"[^\"]*${os}_${gl_arch}\.tar\.gz\"" | head -1 | grep -o 'https[^"]*')"
+            [ -n "$url" ] && curl -fsSL "$url" 2>/dev/null | tar -xz -C "$bin" gitleaks 2>/dev/null \
+                && chmod +x "$bin/gitleaks" && { echo "  · gitleaks installed → $bin ✓"; return 0; } ;;
+    esac
+    echo "  ⚠ $tool: could not install automatically — see the project's releases page"
+    return 1
+}
+
+# -----------------------------------------------------------------------------
 # UPSTREAM FETCH — third-party skills are pulled from THEIR source repo before
 # install, so a kit install always lands the latest upstream version, not the
 # copy vendored in skills/ (which is the offline fallback).

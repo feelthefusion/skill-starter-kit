@@ -64,15 +64,7 @@ write_kit_version "$KIT_ROOT" "$HERMES_SKILLS_DIR/$CATEGORY"
 # --- 8/9/12: portable CLI layers (work on any host, no plugins needed) -------
 echo "▶ portable security + verify CLI layers"
 for tool in gitleaks osv-scanner uv; do
-    if command -v "$tool" >/dev/null 2>&1; then
-        echo "  · $tool present ✓"
-    elif command -v brew >/dev/null 2>&1; then
-        brew install "$tool" >/dev/null 2>&1 \
-            && echo "  · $tool installed ✓" \
-            || echo "  ⚠ brew install $tool failed — install manually"
-    else
-        echo "  ⚠ $tool missing and no brew — install manually"
-    fi
+    ensure_cli_tool "$tool"
 done
 
 # --- 7: GitHub MCP — check gh auth -------------------------------------------
