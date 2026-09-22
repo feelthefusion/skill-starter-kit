@@ -8,9 +8,8 @@
 #   2. Superpowers       plugin (obra/superpowers-marketplace)
 #   3. Supermemory       plugin + LOCAL self-hosted server (supermemoryai/claude-supermemory)
 #   4. Taste-Skill       skills (taste-code + taste-skill)  [copied]
-#   5. GSD               skill (copied)
-#   6. LSP Plugins       skill (copied) — installs LSP per stack at runtime
-#   7. GitHub MCP        skill (copied) + confirms `gh` auth
+#   5. LSP Plugins       skill (copied) — installs LSP per stack at runtime
+#   6. GitHub MCP        skill (copied) — official github/github-mcp-server (issues/PRs/branches)
 #
 # Idempotent: safe to re-run; will not clobber existing files.
 # =============================================================================
@@ -30,7 +29,7 @@ echo "✓ node $(node --version)"
 # --- 1,4,5,6,7: skills are copied into ~/.claude/skills --------------------
 echo "▶ installing skills into $CLAUDE_SKILLS_DIR"
 mkdir -p "$CLAUDE_SKILLS_DIR"
-for skill in graphify taste-skill taste-code gsd lsp-plugins github-mcp; do
+for skill in graphify taste-skill taste-code lsp-plugins github-mcp; do
     if [ -d "$CLAUDE_SKILLS_DIR/$skill" ]; then
         echo "  · $skill already present — skipping"
     elif [ -d "$KIT_SKILLS_SRC/$skill" ]; then
