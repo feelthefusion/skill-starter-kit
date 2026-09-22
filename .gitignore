@@ -1,0 +1,3 @@
+
+# eval verdicts are per-machine, not shared state
+evals/results.json
