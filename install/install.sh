@@ -279,6 +279,20 @@ print("  · settings.json env → Supermemory LOCAL server (%s) %s" % (url, "✓
 PY
     chmod 600 "$CLAUDE_SETTINGS" 2>/dev/null || true
 fi
+# Signal-only capture. By default the plugin saves the WHOLE transcript at every Stop; with a
+# self-hosted server that means thousands of chunks through a local CPU embedding model, the
+# session-start profile call exceeds the plugin's fixed 3 s timeout and it reports "unreachable".
+# Signal extraction saves decisions/fixes/architecture only — what the kit wants remembered.
+SMC="$HOME/.supermemory-claude/settings.json"; mkdir -p "$(dirname "$SMC")"
+python3 - "$SMC" <<'PY'
+import json, sys, os
+p = sys.argv[1]; d = json.load(open(p)) if os.path.exists(p) else {}
+if d.get("signalExtraction") is not True:
+    d["signalExtraction"] = True; json.dump(d, open(p, "w"), indent=2); open(p, "a").write("\n")
+    print("  · supermemory plugin: signal-only capture ✓ (keeps the local embedder responsive)")
+else:
+    print("  · supermemory plugin: signal-only capture already set ✓")
+PY
 
 # --- always-on: a short kit stanza in the USER-level ~/.claude/CLAUDE.md -------------------
 # Skills are model-invoked from their descriptions; this 10-line stanza makes the workflow the
