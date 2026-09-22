@@ -41,7 +41,7 @@ map that makes them one system.
 
 **New machine:** `install.sh` / `hermes.sh` → restart → `/context` (target < 15% at startup).
 
-**New repo, in this order:** `bash <kit>/install/init-project.sh` → edit `AGENTS.md` → trim
+**New repo, in this order:** `kit-init` → edit `AGENTS.md` (or your existing `CLAUDE.md` — kit-init keeps it) → trim
 `verify.sh` → **break something and confirm the gate blocks** → add stack irreversibles to
 `.claude/hooks/guard.sh` → commit all of it.
 
@@ -133,10 +133,16 @@ standalone TDD / debugging / code-review / worktree skills next to Superpowers.
 - `ls ~/.claude/skills/` (or `~/.hermes/skills/autonomous-ai-agents/`) shows: graphify,
   taste-skill, taste-code, caveman, caveman-commit, lsp-plugins, github-mcp, security-gate,
   verify-gate, browser-verify, docs-freshness, guardrails, skill-starter-kit.
-- `.kit-version` matches `git -C ~/skill-starter-kit rev-parse --short HEAD`; each fetched
-  skill has an `.upstream` file naming the upstream commit.
-- In a repo after `init-project.sh`: `./verify.sh` exits 0 clean and names the failing check
+- Machine stamp `~/.claude/skills/.kit-version` (Hermes: `~/.hermes/skills/<category>/.kit-version`)
+  matches the kit's `git rev-parse --short HEAD`; each fetched skill has an `.upstream` file.
+  Per repo, `kit-init` writes `.claude/kit-version`. A repo with a real `CLAUDE.md` intentionally
+  has no `AGENTS.md`.
+- In a repo after `kit-init`: `./verify.sh` exits 0 clean and names the failing check
   dirty; a deliberate type error blocks the turn; `echo '{"tool_input":{"command":"git push
   --force"}}' | .claude/hooks/guard.sh` exits 2.
 - `~/.claude/settings.json` has the three marketplaces under `extraKnownMarketplaces`.
-- `curl -s http://localhost:6767/` returns the Supermemory local UI.
+- `curl -s http://localhost:6767/` returns the Supermemory local UI, and `~/.claude/settings.json`
+  `env` carries `SUPERMEMORY_API_URL` + `SUPERMEMORY_CC_API_KEY` (the desktop app has no shell env;
+  without these the plugin opens the cloud login page every session).
+- Do NOT run `verify.sh` by hand while a Stop hook may be running it: the `.verify.lock` makes the
+  second run wait, by design.

@@ -11,6 +11,18 @@ set -euo pipefail
 
 step() { printf '\n── %s ───────────────────────────────\n' "$1"; }
 
+# One verify at a time per tree: several sessions (or a Stop hook + a manual run) racing the same
+# node_modules / test database is how "tsc vanished" and flaky suites happen. mkdir is atomic; a
+# lock older than 20 min belongs to a dead run.
+LOCK=".verify.lock"; waited=0
+until mkdir "$LOCK" 2>/dev/null; do
+  [ -n "$(find "$LOCK" -maxdepth 0 -mmin +20 2>/dev/null)" ] && { rm -rf "$LOCK"; continue; }
+  [ "$waited" -ge 1200 ] && { echo "verify: another run has held $LOCK for 20 minutes" >&2; exit 1; }
+  [ "$waited" -eq 0 ] && echo "verify: another run is in progress, waiting for it"
+  sleep 5; waited=$((waited + 5))
+done
+trap 'rm -rf "$LOCK"' EXIT
+
 step "dependencies match the lockfile"   # security-gate layer 5 — test what will ship
 # A CLEAN install only when the lockfile changed (or in CI): `npm ci` deletes node_modules first,
 # so running it on every Stop hook races dev servers and mid-task commands.
