@@ -1,0 +1,69 @@
+---
+name: taste-code
+description: "Anti-slop code generation harness. Apply minimalist structural rules so output avoids boilerplate, placeholder noise, redundant error handling, and over-engineered architectures."
+---
+
+# Taste-Code: Minimalist Code Generation Harness
+
+Standard LLMs gravitate to large, generic, over-engineered code that bloats past token limits
+and buries the real logic. This skill injects rigorous structural discipline into code
+generation: emit the smallest correct thing, nothing decorative, no placeholder scaffolding.
+Think of it as taste filters applied to every code block you produce.
+
+**Scope:** any code generation or refactor. It pairs with the frontend Taste skill
+(`design-taste-frontend`) for UI concerns; this one is about code structure itself.
+
+## The 10 Structural Rules
+
+1. **Smallest correct unit.** Write only what the task requires. If a helper is used once, inline
+   it. If a function is trivial, keep it a function only when it names intent.
+2. **No placeholder scaffolding.** No `// TODO: fill me`, `return null` stubs passed off as done,
+   `console.log("here")`, or fake data. Ship working paths, or say what is unimplemented.
+3. **No redundant error handling.** Don't wrap everything in try/catch + log noise. Handle
+   errors where they compound; otherwise let them propagate. No `catch (e) { console.error(e) }`
+   dressed up as robustness.
+4. **No over-engineered architecture.** No factory-of-factories, interface-for-everything,
+   abstraction layers for a single call site, or config systems with one option. Build for the
+   code that exists, not a speculative future.
+5. **Prefer plain standard library** over pulling a dependency for something stdlib does in a
+   line. Dependency cost is real; add a package only when it earns its weight.
+6. **Explicit over clever.** No one-liners that hide intent, no magic numbers, no clever
+   pyramids. Readability beats brevity as soon as the "clever" obscures meaning.
+7. **Naming says what it is.** Functions/classes/variables named by behavior, not
+   implementation. `processPayment` not `handleTrx2`. No `data`, `helper`, `temp`.
+8. **No dead code or speculative params.** No unused imports, unused variables, unused args,
+   or feature switches for things that don't exist yet. If it's not used now, it doesn't ship.
+9. **No generic comment fluff.** Only comments that explain WHY (non-obvious constraint,
+   tradeoff, invariant). Delete "this prints the value", "// initialize", boilerplate headers.
+10. **Right-sized formatting.** Match the surrounding file's conventions. No reformatting
+    hunks you didn't change, no blowing up style just to look organized.
+
+## When to Use
+- Every code generation request, unless the user explicitly asks for maximal scaffolding.
+- Code review passes: check output against these rules before presenting it.
+- Refactors: strip dead/placeholder/speculative code as part of the change.
+
+Don't use for:
+- User explicitly requesting verbose/educational code, or scaffolding they asked for by name.
+
+## Procedure
+1. Read the request. Restate (internally) the smallest change that satisfies it.
+2. Generate against the 10 rules — deliberately resist the boilerplate default.
+3. **Self-check**: walk the output for rule violations (unused imports, try/catch noise,
+   placeholder returns, speculative abstraction, naming). Fix before presenting.
+4. Present the minimal change; note unimplemented paths explicitly rather than stubbing them.
+
+## Pitfalls
+- **Fitting 10 rules is not padding.** Enforcement means *less* code, not the same code with a
+  "minimalist" label.
+- **Don't remove necessary error handling.** Rule 3 bans *redundant* logging-wrapping, not
+  error handling where failure is a real control-flow path (I/O, network, parse).
+- **Conventions win.** Rule 10 exists because breaking the file's existing style is itself
+  noise; match what's there even when you'd format differently.
+- **Descriptions shaped like praise** ("minimalist!") add nothing — follow the rules literally.
+
+## Verification
+- The change is the smallest that satisfies the request (no unused imports/vars/params).
+- No placeholder/`TODO` stubs, no fabricated working paths, no try/catch-log noise.
+- Comments are WHY-only; naming is behavior-based; deps are justified.
+- You can explain every line — nothing survives "what does this do and why."
