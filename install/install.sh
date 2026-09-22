@@ -259,6 +259,27 @@ echo "─── done ───────────────────�
 echo "Plugins track GitHub automatically: marketplaces are registered by repo, so"
 echo "Claude Code fetches the latest from origin — no pinned versions in this kit."
 
+# --- Supermemory plugin → LOCAL server. The plugin reads SUPERMEMORY_API_URL / SUPERMEMORY_CC_API_KEY
+# from the environment only; the Claude desktop app never sources ~/.zshrc, so without this the
+# SessionStart hook assumes cloud and opens the Supermemory login page every session.
+# Claude Code's settings.json `env` block is inherited by hooks and MCP servers — set it there.
+SM_URL="${SUPERMEMORY_API_URL:-http://localhost:6767}"
+SM_KEY_FILE="$HOME/.supermemory/api-key"
+if [ -s "$SM_KEY_FILE" ] && command -v python3 >/dev/null 2>&1; then
+    python3 - "$CLAUDE_SETTINGS" "$SM_URL" "$SM_KEY_FILE" <<'PY'
+import json, sys, os
+p, url, keyf = sys.argv[1:4]
+d = json.load(open(p)) if os.path.exists(p) else {}
+env = d.setdefault("env", {})
+changed = env.get("SUPERMEMORY_API_URL") != url or not env.get("SUPERMEMORY_CC_API_KEY")
+env["SUPERMEMORY_API_URL"] = url
+env["SUPERMEMORY_CC_API_KEY"] = open(keyf).read().strip()
+json.dump(d, open(p, "w"), indent=2); open(p, "a").write("\n")
+print("  · settings.json env → Supermemory LOCAL server (%s) %s" % (url, "✓" if changed else "already set ✓"))
+PY
+    chmod 600 "$CLAUDE_SETTINGS" 2>/dev/null || true
+fi
+
 # --- always-on: a short kit stanza in the USER-level ~/.claude/CLAUDE.md -------------------
 # Skills are model-invoked from their descriptions; this 10-line stanza makes the workflow the
 # default in every project without the user naming a skill. Idempotent (marker-delimited).
