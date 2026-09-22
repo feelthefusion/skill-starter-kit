@@ -258,12 +258,40 @@ fi
 echo "─── done ───────────────────────────────────────────────"
 echo "Plugins track GitHub automatically: marketplaces are registered by repo, so"
 echo "Claude Code fetches the latest from origin — no pinned versions in this kit."
-echo "Next: inside Claude Code run  /plugin install superpowers@superpowers-marketplace"
-echo "                               /plugin install supermemory@supermemory-plugins"
-echo "                               /plugin install security-guidance@claude-plugins-official"
-echo "                               /plugin install claude-security@claude-plugins-official"
-echo "                               /plugin install playwright@claude-plugins-official"
-echo "                               /plugin install chrome-devtools-mcp@claude-plugins-official"
+# --- actually install the plugins when a claude binary can be found ------------------
+# PATH first; then the Claude desktop app's bundled Claude Code (newest version dir).
+find_claude() {
+    command -v claude 2>/dev/null && return
+    local d="$HOME/Library/Application Support/Claude/claude-code"
+    [ -d "$d" ] && ls -d "$d"/*/claude.app/Contents/MacOS/claude 2>/dev/null | sort -V | tail -1
+}
+CLAUDE_BIN="$(find_claude || true)"
+if [ -n "$CLAUDE_BIN" ] && [ -x "$CLAUDE_BIN" ]; then
+    echo "▶ installing plugins via $("$CLAUDE_BIN" --version 2>/dev/null | head -1)"
+    "$CLAUDE_BIN" plugin marketplace add anthropics/claude-plugins-official >/dev/null 2>&1 || true
+    "$CLAUDE_BIN" plugin marketplace add obra/superpowers-marketplace       >/dev/null 2>&1 || true
+    "$CLAUDE_BIN" plugin marketplace add supermemoryai/supermemory-plugins  >/dev/null 2>&1 || true
+    for p in superpowers@superpowers-marketplace supermemory@supermemory-plugins \
+             security-guidance@claude-plugins-official claude-security@claude-plugins-official \
+             playwright@claude-plugins-official chrome-devtools-mcp@claude-plugins-official; do
+        if "$CLAUDE_BIN" plugin list 2>/dev/null | grep -q "❯ $p"; then
+            "$CLAUDE_BIN" plugin update "$p" >/dev/null 2>&1 && echo "  · $p  updated ✓" || echo "  · $p  present ✓"
+        else
+            "$CLAUDE_BIN" plugin install "$p" --scope user >/dev/null 2>&1 && echo "  · $p  installed ✓" || echo "  ⚠ $p  install failed — run /plugin install $p inside Claude Code"
+        fi
+    done
+    # expose the bundled binary on PATH for next time
+    if ! command -v claude >/dev/null 2>&1 && [ -d "$HOME/.local/bin" ]; then
+        ln -sf "$CLAUDE_BIN" "$HOME/.local/bin/claude" && echo "  · claude → ~/.local/bin/claude (symlink to the desktop-bundled CLI)"
+    fi
+else
+    echo "Next: inside Claude Code run  /plugin install superpowers@superpowers-marketplace"
+    echo "                               /plugin install supermemory@supermemory-plugins"
+    echo "                               /plugin install security-guidance@claude-plugins-official"
+    echo "                               /plugin install claude-security@claude-plugins-official"
+    echo "                               /plugin install playwright@claude-plugins-official"
+    echo "                               /plugin install chrome-devtools-mcp@claude-plugins-official"
+fi
 echo "      then restart the session (or /reload-plugins) so skills + hooks load."
 echo
 echo "FIRST THING in a new project:  bash $KIT_ROOT/install/init-project.sh"
