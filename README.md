@@ -156,14 +156,17 @@ host you set up → updates hook scripts in every repo you ran `kit-init` in. Re
 deleted are detected (compared against every version the kit ever shipped) and left alone;
 `verify.sh`, `AGENTS.md` and `settings.json` are always yours. Log: `~/.config/skill-starter-kit/update.log`.
 
-Turn on push updates (needs Hermes; GitHub must reach the gateway's port 8644):
+Turn on push updates (needs Hermes and `gh`; no tunnel account needed):
 ```bash
-kit-webhook enable                                   # route + script + webhook platform
-hermes gateway run                                   # or: hermes gateway install (service)
-tailscale funnel 8644                                # any public URL works (cloudflared, ngrok…)
-kit-webhook enable --url https://<your-public-host>  # creates the GitHub webhook via gh
-kit-webhook status
+hermes gateway install                 # gateway as a login service (receives the webhook)
+kit-webhook enable --tunnel            # route + silent script + cloudflared tunnel service + GitHub webhook
+kit-webhook status                     # public URL, listener, last update runs
 ```
+The tunnel service starts at login and re-points the GitHub webhook whenever its URL changes.
+Have your own stable host (Tailscale Funnel, a reverse proxy)? Use `kit-webhook enable --url https://<host>` instead.
+Deliveries are HMAC-signed; the route runs `kit-update` and returns `[SILENT]` — no agent turn, no LLM cost.
+Undo: `kit-webhook disable`.
+
 GitHub only sends webhooks for repos you administer, so upstream skills you don't own are picked
 up by the session-start check instead.
 
