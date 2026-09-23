@@ -5,3 +5,17 @@ graphify	Graphify-Labs/graphify	main	graphify/skill.md
 caveman	JuliusBrussee/caveman	main	skills/caveman
 caveman-commit	JuliusBrussee/caveman	main	skills/caveman-commit
 taste-skill	Leonxlnx/taste-skill	main	skills/taste-skill
+use-railway	railwayapp/railway-skills	main	plugins/railway/skills/use-railway
+cloudflare	cloudflare/skills	main	skills/cloudflare
+wrangler	cloudflare/skills	main	skills/wrangler
+workers-best-practices	cloudflare/skills	main	skills/workers-best-practices
+deploy-on-aws	awslabs/agent-plugins	main	plugins/deploy-on-aws/skills/deploy
+gcloud	google/skills	main	plugins/cloud/google-cloud-developer/skills/gcloud
+gws-shared	googleworkspace/cli	main	skills/gws-shared
+gws-gmail	googleworkspace/cli	main	skills/gws-gmail
+gws-drive	googleworkspace/cli	main	skills/gws-drive
+gws-calendar	googleworkspace/cli	main	skills/gws-calendar
+gws-sheets	googleworkspace/cli	main	skills/gws-sheets
+gws-docs	googleworkspace/cli	main	skills/gws-docs
+gws-slides	googleworkspace/cli	main	skills/gws-slides
+gws-admin-reports	googleworkspace/cli	main	skills/gws-admin-reports

@@ -73,7 +73,7 @@ case "$c" in
   # --- secrets: read or exfiltrate -------------------------------------------
   *"cat .env"*|*"cat ./.env"*|*"less .env"*|*"head .env"*|*"grep "*".env"*|*"cp .env"*|*"cat "*"/.env"*)
       block "reading a secrets file into the agent context";;
-  *"~/.ssh"*|*"\$HOME/.ssh"*|*"~/.aws"*|*"~/.config/gh"*)
+  *"~/.ssh"*|*"\$HOME/.ssh"*|*"~/.aws"*|*"~/.config/gh"*|*"~/.gam"*|*"~/.config/gws"*|*"~/.config/gcloud"*)
       block "touching credential directories";;
   *"curl "*"| sh"*|*"curl "*"| bash"*|*"wget "*"| sh"*|*"wget "*"| bash"*)
       block "piping a remote script into a shell";;
@@ -81,6 +81,20 @@ case "$c" in
   *"npm publish"*|*"pnpm publish"*|*"yarn publish"*|*"twine upload"*|*"cargo publish"*)
       block "publishing a package";;
   *"sudo "*)             block "privilege escalation";;
+  # --- cloud: irreversible deletes (cloud-clis) -------------------------------------
+  *"aws s3 rb "*|*"aws s3 rm "*"--recursive"*|*"aws rds delete-db-"*|*"aws cloudformation delete-stack"*|*"aws ec2 terminate-instances"*|*"aws dynamodb delete-table"*)
+      block "irreversible AWS delete — run it by hand if intended";;
+  *"railway delete"*|*"railway rm "*|*"railway service delete"*|*"railway environment delete"*|*"railway volume delete"*|*"railway bucket delete"*)
+      block "irreversible Railway delete — run it by hand if intended";;
+  *"wrangler delete"*|*"wrangler d1 delete"*|*"wrangler r2 bucket delete"*|*"wrangler kv namespace delete"*|*"wrangler queues delete"*)
+      block "irreversible Cloudflare delete — run it by hand if intended";;
+  *"gcloud projects delete"*|*"gcloud sql instances delete"*|*"gcloud storage rm "*"--recursive"*|*"gcloud storage buckets delete"*|*"gsutil rm -r"*|*"gsutil rb "*)
+      block "irreversible Google Cloud delete — run it by hand if intended";;
+  *"gam delete user"*|*"gam delete users"*|*"gam delete group"*|*"gam delete shareddrive"*|*"gam delete domain"*|*"gws drive files delete"*|*"gws gmail users messages delete"*)
+      block "irreversible Google Workspace delete — run it by hand if intended";;
+  *"gws auth export"*|*"gcloud auth print-access-token"*|*"gcloud auth print-identity-token"*)
+      block "printing cloud credentials into the agent context";;
+  *"gh repo delete"*)    block "deleting a GitHub repo";;
   # --- your stack's irreversibles (edit) ------------------------------------------
   # *"terraform destroy"*)     block "destroys infrastructure";;
   # *"prisma migrate reset"*)  block "resets the database";;

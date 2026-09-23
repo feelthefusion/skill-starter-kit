@@ -53,11 +53,31 @@ kit_self_update() {
 # ~/.local/bin (Linux has no brew by default; without this every generated
 # verify.sh is permanently RED at the dependency-audit step).
 # -----------------------------------------------------------------------------
-ensure_cli_tool() {  # ensure_cli_tool <gitleaks|osv-scanner|uv>
+ensure_cli_tool() {  # ensure_cli_tool <gitleaks|osv-scanner|uv|gh|aws|railway|wrangler|cloudflared|gcloud|gws|gam>
     local tool="$1"
     command -v "$tool" >/dev/null 2>&1 && { echo "  · $tool present ✓"; return 0; }
+    # wrangler is an npm package on every OS (Cloudflare's documented install)
+    if [ "$tool" = wrangler ]; then
+        if command -v node >/dev/null 2>&1 && [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 22 ]; then
+            echo "  ⚠ wrangler: needs Node ≥ 22 (found $(node --version)) — upgrade Node, then re-run"; return 1
+        fi
+        command -v npm >/dev/null 2>&1 && npm install -g wrangler@latest >/dev/null 2>&1 \
+            && { echo "  · wrangler installed (npm -g) ✓"; return 0; }
+        echo "  ⚠ wrangler: needs Node/npm — or use \`npx wrangler\` per project"; return 1
+    fi
+    # GAM7 (Google Workspace admin) ships on PyPI as gam7 → `gam`; uv installs it user-local on any OS
+    if [ "$tool" = gam ]; then
+        command -v uv >/dev/null 2>&1 && uv tool install --quiet gam7 >/dev/null 2>&1 \
+            && { echo "  · gam installed (uv tool: gam7) ✓"; return 0; }
+        echo "  ⚠ gam: needs uv (installed by the kit first) — then \`uv tool install gam7\`"; return 1
+    fi
+    local formula="$tool"; [ "$tool" = aws ] && formula=awscli; [ "$tool" = gws ] && formula=googleworkspace-cli
     if command -v brew >/dev/null 2>&1; then
-        brew install "$tool" >/dev/null 2>&1 && { echo "  · $tool installed (brew) ✓"; return 0; }
+        if [ "$tool" = gcloud ]; then
+            brew install --cask gcloud-cli >/dev/null 2>&1 && { echo "  · gcloud installed (brew cask) ✓"; return 0; }
+        else
+            brew install "$formula" >/dev/null 2>&1 && { echo "  · $tool installed (brew) ✓"; return 0; }
+        fi
     fi
     local bin="$HOME/.local/bin" os arch
     mkdir -p "$bin"
@@ -81,6 +101,49 @@ ensure_cli_tool() {  # ensure_cli_tool <gitleaks|osv-scanner|uv>
                    | grep -o "\"browser_download_url\": *\"[^\"]*${os}_${gl_arch}\.tar\.gz\"" | head -1 | grep -o 'https[^"]*')"
             [ -n "$url" ] && curl -fsSL "$url" 2>/dev/null | tar -xz -C "$bin" gitleaks 2>/dev/null \
                 && chmod +x "$bin/gitleaks" && { echo "  · gitleaks installed → $bin ✓"; return 0; } ;;
+        gh)
+            local url
+            url="$(curl -fsSL https://api.github.com/repos/cli/cli/releases/latest 2>/dev/null \
+                   | grep -o "\"browser_download_url\": *\"[^\"]*_${os}_${arch}\.tar\.gz\"" | head -1 | grep -o 'https[^"]*')"
+            [ -n "$url" ] && curl -fsSL "$url" 2>/dev/null | tar -xz -C "$bin" --strip-components=2 --wildcards '*/bin/gh' 2>/dev/null \
+                && chmod +x "$bin/gh" && { echo "  · gh installed → $bin ✓"; return 0; } ;;
+        railway)
+            local r_arch=x86_64; [ "$arch" = arm64 ] && r_arch=aarch64
+            local r_os=unknown-linux-musl; [ "$os" = darwin ] && r_os=apple-darwin
+            local url
+            url="$(curl -fsSL https://api.github.com/repos/railwayapp/cli/releases/latest 2>/dev/null \
+                   | grep -o "\"browser_download_url\": *\"[^\"]*-${r_arch}-${r_os}\.tar\.gz\"" | head -1 | grep -o 'https[^"]*')"
+            [ -n "$url" ] && curl -fsSL "$url" 2>/dev/null | tar -xz -C "$bin" railway 2>/dev/null \
+                && chmod +x "$bin/railway" && { echo "  · railway installed → $bin ✓"; return 0; } ;;
+        cloudflared)
+            if [ "$os" = linux ]; then
+                curl -fsSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$arch" \
+                    -o "$bin/cloudflared" 2>/dev/null && chmod +x "$bin/cloudflared" \
+                    && { echo "  · cloudflared installed → $bin ✓"; return 0; }
+            fi ;;
+        gws)
+            command -v npm >/dev/null 2>&1 && npm install -g @googleworkspace/cli@latest >/dev/null 2>&1 \
+                && { echo "  · gws installed (npm -g) ✓"; return 0; } ;;
+        gcloud)
+            # official Google Cloud CLI archive, user-local: ~/.local/google-cloud-sdk + ~/.local/bin/gcloud
+            local g_os=linux; [ "$os" = darwin ] && g_os=darwin
+            local g_arch=x86_64; [ "$arch" = arm64 ] && g_arch=arm
+            curl -fsSL "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-${g_os}-${g_arch}.tar.gz" 2>/dev/null \
+                | tar -xz -C "$HOME/.local" 2>/dev/null \
+                && "$HOME/.local/google-cloud-sdk/install.sh" --quiet --usage-reporting=false --path-update=false >/dev/null 2>&1 \
+                && for b in gcloud gsutil bq; do ln -sf "$HOME/.local/google-cloud-sdk/bin/$b" "$bin/$b"; done \
+                && { echo "  · gcloud installed → $bin ✓"; return 0; } ;;
+        aws)
+            # official AWS CLI v2 bundle, user-local (no sudo): ~/.local/aws-cli + ~/.local/bin/aws
+            if [ "$os" = linux ]; then
+                local a_arch=x86_64; [ "$arch" = arm64 ] && a_arch=aarch64
+                local t; t="$(mktemp -d "${TMPDIR:-/tmp}/awscli.XXXXXX")"
+                curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-${a_arch}.zip" -o "$t/aws.zip" 2>/dev/null \
+                    && python3 -c "import zipfile,sys;zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])" "$t/aws.zip" "$t" \
+                    && chmod -R u+x "$t/aws" && "$t/aws/install" -i "$HOME/.local/aws-cli" -b "$bin" --update >/dev/null 2>&1 \
+                    && { rm -rf "$t"; echo "  · aws installed → $bin ✓"; return 0; }
+                rm -rf "$t"
+            fi ;;
     esac
     echo "  ⚠ $tool: could not install automatically — see the project's releases page"
     return 1
@@ -147,6 +210,7 @@ kit_fetch_upstreams() {
 
 # Re-apply the kit's deliberate edits to a freshly fetched upstream skill.
 #   install/overlays/<skill>/description  — replaces the frontmatter `description:`
+#   install/overlays/<skill>/name         — replaces the frontmatter `name:`
 #   install/overlays/<skill>/PREPEND.md   — inserted right after the frontmatter
 #   install/overlays/<skill>/replace/<n>.old + <n>.new
 #                                          — literal text replacement in SKILL.md body (a
@@ -183,6 +247,10 @@ if os.path.exists(desc_path):
         out.append(ln)
     out.append("description: " + '"' + desc.replace('"', '\\"').replace("\n", " ") + '"')
     fm = "\n".join(out)
+name_path = os.path.join(ov, "name")
+if os.path.exists(name_path):
+    # rename a generically-named upstream skill (e.g. AWS "deploy") so it can't collide
+    fm = re.sub(r"(?m)^name:.*$", "name: " + open(name_path, encoding="utf-8").read().strip(), fm, count=1)
 rep_dir = os.path.join(ov, "replace")
 if os.path.isdir(rep_dir):
     for f in sorted(os.listdir(rep_dir)):

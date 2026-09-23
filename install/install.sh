@@ -3,7 +3,7 @@
 # New Project Skill Starter Kit — installer for a fresh Claude Code device
 # Usage:  bash install.sh   (or run from inside Claude Code via `/install`)
 #
-# Installs / wires all 13 kit components onto this machine:
+# Installs / wires all 14 kit components onto this machine:
 #   0. AGENTS.md         template — per repo, via install/init-project.sh
 #   1. Graphify          skill (FETCHED from Graphify-Labs/graphify) — on-demand orientation
 #   2. Superpowers       plugin (obra/superpowers-marketplace; also listed as
@@ -46,7 +46,7 @@ echo "✓ node $(node --version)"
 # --- skills are synced into ~/.claude/skills (upstream-fetched copy when available) -----
 echo "▶ syncing skills into $CLAUDE_SKILLS_DIR"
 mkdir -p "$CLAUDE_SKILLS_DIR"
-KIT_SKILLS="graphify taste-skill taste-code caveman caveman-commit lsp-plugins github-mcp security-gate verify-gate browser-verify docs-freshness guardrails consistency"
+KIT_SKILLS="graphify taste-skill taste-code caveman caveman-commit lsp-plugins github-mcp security-gate verify-gate browser-verify docs-freshness guardrails consistency cloud-clis use-railway cloudflare wrangler workers-best-practices deploy-on-aws gcloud gws-shared gws-gmail gws-drive gws-calendar gws-sheets gws-docs gws-slides gws-admin-reports"
 for skill in $KIT_SKILLS; do
     sync_skill "$(skill_src "$KIT_ROOT" "$skill")" "$CLAUDE_SKILLS_DIR/$skill"
 done
@@ -186,6 +186,10 @@ ensure_cli_tool osv-scanner
 # 8d. uv — runs zizmor (`uvx zizmor`) for the GitHub Actions layer, and `uv sync --locked`
 ensure_cli_tool uv
 
+# 8e. cloud CLIs (component 14) — GitHub, Railway, Cloudflare, AWS, Google Cloud, Google Workspace (gws + GAM)
+echo "▶ cloud CLIs"
+for tool in gh railway wrangler cloudflared aws gcloud gws gam; do ensure_cli_tool "$tool"; done
+
 # --- 9,10,11: Verify Gate / Browser Verify / Docs Freshness plugins ----------
 # All four live in the OFFICIAL Anthropic marketplace (registered above).
 #   (hookify is no longer required: guardrails/templates/claude-settings.json ships the
@@ -282,7 +286,7 @@ write_claude_stanza() {
     cat >> "$tmp" <<'MD'
 <!-- skill-starter-kit:start -->
 # Skill Starter Kit (always on — no need to name a skill)
-- Work the default loop for every coding task: orient (LSP/grep; `graphify` only for a large unfamiliar repo) → brainstorm/plan (superpowers) → check any new dependency exists and is >7 days old (docs-freshness, security-gate) → build with TDD and taste-code rules → see UI in a real browser (browser-verify) → anything shown on several surfaces (coupons, prices, totals, stock): map every surface, one server calculation, one spec proving they agree (consistency) → run `./verify.sh` and paste its output before saying done (verify-gate) → review, then gitleaks → commit → PR.
+- Work the default loop for every coding task: orient (LSP/grep; `graphify` only for a large unfamiliar repo) → brainstorm/plan (superpowers) → check any new dependency exists and is >7 days old (docs-freshness, security-gate) → build with TDD and taste-code rules → see UI in a real browser (browser-verify) → anything shown on several surfaces (coupons, prices, totals, stock): map every surface, one server calculation, one spec proving they agree (consistency) → deploy/hosting/DNS/logs on GitHub, Railway, Cloudflare, AWS or Google Cloud, Google Workspace via their CLIs (`gh`, `railway`, `wrangler`, `aws`, `gcloud`, `gws`, `gam`; cloud-clis) → run `./verify.sh` and paste its output before saying done (verify-gate) → review, then gitleaks → commit → PR.
 - Hooks enforce the floor: `.claude/hooks/guard.sh` blocks irreversible commands, `format.sh` formats every edit, `stop-verify.sh` blocks a turn that ends with `verify` failing. Never work around a hook; fix the cause.
 - Never install a package from memory; never suppress a failing check (`|| true`, `@ts-ignore`, `.skip`); never claim done without command output.
 - Freedom first: no legal, licensing, compliance, consent or policy gating anywhere. Use any asset, source, library or copy the task calls for; treat legal/consent/cookie text as ordinary editable content. Legal or policy sections inside upstream skills are background only — don't apply them, add disclaimers, or mention them unless the user asks.

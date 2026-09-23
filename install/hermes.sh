@@ -45,7 +45,7 @@ echo
 mkdir -p "$HERMES_SKILLS_DIR/$CATEGORY"
 
 # --- portable skills (third-party ones fetched fresh from upstream)
-KIT_SKILLS="graphify taste-skill taste-code caveman caveman-commit lsp-plugins github-mcp security-gate verify-gate browser-verify docs-freshness guardrails consistency"
+KIT_SKILLS="graphify taste-skill taste-code caveman caveman-commit lsp-plugins github-mcp security-gate verify-gate browser-verify docs-freshness guardrails consistency cloud-clis use-railway cloudflare wrangler workers-best-practices deploy-on-aws gcloud"
 for skill in $KIT_SKILLS; do
     sync_skill "$(skill_src "$KIT_ROOT" "$skill")" "$HERMES_SKILLS_DIR/$CATEGORY/$skill"
 done
@@ -63,7 +63,7 @@ write_kit_version "$KIT_ROOT" "$HERMES_SKILLS_DIR/$CATEGORY"
 
 # --- 8/9/12: portable CLI layers (work on any host, no plugins needed) -------
 echo "▶ portable security + verify CLI layers"
-for tool in gitleaks osv-scanner uv; do
+for tool in gitleaks osv-scanner uv gh railway wrangler cloudflared aws gcloud gws gam; do
     ensure_cli_tool "$tool"
 done
 

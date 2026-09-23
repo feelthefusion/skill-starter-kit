@@ -6,7 +6,7 @@ verification, fresh library docs, install hygiene, multi-session memory, a struc
 anti-slop taste, per-stack language servers, official GitHub tooling, and a five-layer security
 gate — wired so each component hands off to the next.
 
-> **v3 (deep-research pass).** The kit is **13 components + a project template**. Added because
+> **v3 (deep-research pass).** The kit is **14 components + a project template**. Added because
 > they close loops deterministically: **Guardrails** (nothing gated *actions* — `rm -rf`, force
 > push, reading `.env`, `curl | sh`; now a PreToolUse hook + deny-list + OS sandbox, and the
 > PostToolUse formatter that `taste-code` always promised), **install hygiene** inside the
@@ -37,6 +37,7 @@ gate — wired so each component hands off to the next.
 | 11 | **Docs Freshness** | skill → `context7` (optional) | `--help` → installed source → `llms.txt` → Context7 → DeepWiki. Never install a package name produced from memory without checking it exists. | — |
 | 12 | **Guardrails** ⭐ | skill + hooks + settings | `guard.sh` (PreToolUse: blocks recursive deletes outside the repo, force-push/reset, `--no-verify`, secret reads, `curl \| sh`, publishing, prod DB drops), `format.sh` (PostToolUse: biome/prettier/ruff/gofmt/rustfmt), `permissions.deny`, OS **sandbox** with `failIfUnavailable`. **Same scripts on both hosts.** | **yes** |
 | 13 | **Consistency** | skill (kit-owned) | Features that appear on several surfaces — coupons, prices, totals, tax, shipping thresholds, stock, points, subscriptions — stay right everywhere: **map every surface** (drawer, cart, checkout, confirmation, account, emails/SMS, admin, API) → **one server calculation** → **one Playwright spec** asserting every surface agrees, plus edge cases (invalid/expired/minimum/removed/reload). Runs in `verify`. | spec in `verify` |
+| 14 | **Cloud CLIs** | skill (kit-owned) + CLIs + vendor skills | Installs **`gh`**, **`railway`**, **`wrangler`** + **`cloudflared`**, **`aws`**, **`gcloud`**, **`gws`** (Google Workspace), **`gam`** (GAM7, Workspace admin) (brew/npm/uv, or official release binaries on Linux) and live-fetches the vendors' own skills: Railway `use-railway`, Cloudflare `cloudflare` · `wrangler` · `workers-best-practices`, AWS `deploy-on-aws`, Google `gcloud`, Google Workspace core `gws-*` (Claude Code; Hermes' bundled `google-workspace` covers it). `cloud-clis` routes jobs to the right CLI, checks the signed-in account before changes, keeps secret values out of the transcript, and deploys only after `verify`. CLI first; vendor MCP servers are opt-in. `guard.sh` blocks irreversible cloud deletes. | guard |
 
 ## How they work together
 
@@ -49,8 +50,9 @@ The root [`SKILL.md`](SKILL.md) is the workflow map. Short version of a feature,
 5. **See it**: design-taste (4) → browser compare loop (10); multi-surface features get a surface map + agreement spec (13); bugs via systematic-debugging (2) with DevTools evidence (10).
 6. **Prove it**: `verify` at turn end (9); fix causes, never suppress (4); output verbatim, Caveman hands off (7).
 7. **Review**: fresh-context code review (2); reject findings that violate taste (4); `/claude-security` before a PR (8).
-8. **Ship**: gitleaks → commit (`caveman-commit` opt-in) → PR via `gh` / GitHub MCP (6) → merge when CI agrees with `verify`.
-9. **Remember**: Supermemory (3), `AGENTS.md` (0), or a skill.
+8. **Deploy**: right account first, `railway up` / `wrangler deploy` / `aws`, then prove it live (14).
+9. **Ship**: gitleaks → commit (`caveman-commit` opt-in) → PR via `gh` / GitHub MCP (6) → merge when CI agrees with `verify`.
+10. **Remember**: Supermemory (3), `AGENTS.md` (0), or a skill.
 
 Every kit-owned skill ends with a **Works with →** section stating exactly these handoffs, so
 the component you're in tells you which one is next.
@@ -101,7 +103,7 @@ kit-init      # in any repo: AGENTS.md, generated verify.sh, hooks, deny-list, s
 ```
 
 **What the one-liner does for you (Claude Code):** clones/pulls the kit · fetches Graphify, Caveman,
-Taste from their upstream repos · installs all 13 skills · finds `claude` (PATH or the desktop app's
+Taste from their upstream repos · installs all 14 skills · finds `claude` (PATH or the desktop app's
 bundle) and installs/updates the six plugins (Superpowers, Supermemory, security-guidance,
 claude-security, playwright, chrome-devtools-mcp) · installs and auto-starts the local Supermemory
 server · installs gitleaks, osv-scanner, uv · writes a 10-line always-on stanza to

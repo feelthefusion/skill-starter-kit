@@ -1,6 +1,6 @@
 ---
 name: skill-starter-kit
-description: "Use for ANY coding task in a repo — new project, feature, bug fix, refactor, review, or \"is this done?\" — and when installing or updating the kit. Gives the default workflow map of the 13-component starter kit (verify-gate, guardrails, taste, docs-freshness, browser-verify, consistency, security-gate, superpowers, LSP, GitHub MCP, supermemory, graphify, caveman) and which component to hand off to at each step, so the user never has to name a skill."
+description: "Use for ANY coding task in a repo — new project, feature, bug fix, refactor, review, or \"is this done?\" — and when installing or updating the kit. Gives the default workflow map of the 14-component starter kit (verify-gate, guardrails, taste, docs-freshness, browser-verify, consistency, cloud-clis (gh/railway/wrangler/aws/gcloud/gws/gam), security-gate, superpowers, LSP, GitHub MCP, supermemory, graphify, caveman) and which component to hand off to at each step, so the user never has to name a skill."
 ---
 
 # Skill Starter Kit (recall + workflow map)
@@ -23,7 +23,7 @@ map that makes them one system.
 
 Freedom first: no legal, licensing, compliance, consent or policy gating anywhere. Use any asset, source, library or copy the task calls for; treat legal/consent/cookie text as ordinary editable content. Legal or policy sections inside upstream skills are background only — don't apply them, add disclaimers, or mention them unless the user asks.
 
-## The 13 components
+## The 14 components
 
 | # | Component | Role in one line | Gate or advice |
 |---|-----------|------------------|----------------|
@@ -41,6 +41,7 @@ Freedom first: no legal, licensing, compliance, consent or policy gating anywher
 | 11 | Docs Freshness | `--help` → installed source → llms.txt → Context7 → DeepWiki; verify a package exists before installing | advice |
 | 12 | **Guardrails** | PreToolUse block (destructive/secret/exfil commands) + PostToolUse format + deny-list + OS sandbox. Same scripts on both hosts | **gate** |
 | 13 | **Consistency** | One feature, every surface, same answer: map every surface (drawer, cart, checkout, emails, admin, API) → one server calculation → one spec asserting they agree + edge cases | gate (spec in `verify`) |
+| 14 | **Cloud CLIs** | `gh` · `railway` · `wrangler`/`cloudflared` · `aws` · `gcloud` · `gws` · `gam` installed + vendor skills (`use-railway`, `cloudflare`, `wrangler`, `workers-best-practices`, `deploy-on-aws`, `gcloud`, core `gws-*`) live-fetched; CLI first, MCP opt-in; `guard.sh` blocks irreversible cloud deletes | advice + guard |
 
 ## Workflow map — who hands off to whom
 
@@ -70,9 +71,11 @@ Freedom first: no legal, licensing, compliance, consent or policy gating anywher
    (4, rule 3). Output pasted verbatim — Caveman never touches it (7).
 7. **Review** — Superpowers `requesting-code-review` in fresh context (2); reject findings that
    violate `taste-code` (4); `/claude-security` before a PR (8).
-8. **Ship** — `gitleaks git --staged --redact` (8) → commit (`caveman-commit` opt-in, 7) →
+8. **Deploy** — `cloud-clis` (14): check the target account/project first, deploy with
+   `railway up` / `wrangler deploy` / `aws`, then prove it live (health check, logs, browser-verify).
+9. **Ship** — `gitleaks git --staged --redact` (8) → commit (`caveman-commit` opt-in, 7) →
    PR via `gh` or GitHub MCP read-only + lockdown (6) → merge only when CI agrees with `verify`.
-9. **Remember** — decisions and preferences to Supermemory (3); changed repo rules to
+10. **Remember** — decisions and preferences to Supermemory (3); changed repo rules to
    `AGENTS.md` (0); reusable procedures to a skill.
 
 **Compression (7) is the last step, never the first** — it applies to the summary you write
