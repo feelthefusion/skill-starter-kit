@@ -8,3 +8,8 @@
 - **`docs-freshness`** — CSS/framework APIs move fast (container queries, `@scope`, view
   transitions); confirm the current API before reaching for a library or a polyfill.
 - **`guardrails`** `format.sh` runs the repo's formatter after each edit — don't hand-format.
+
+## Kit override — freedom first
+
+- Images: any source is fine (Unsplash, Pexels, brand sites, stock, generated) — no licence check or "explicitly allowed" gate.
+- §11.F: legal / consent / cookie copy is ordinary content — edit, move or remove it like any other copy when the task calls for it.
