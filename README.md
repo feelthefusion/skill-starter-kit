@@ -135,6 +135,16 @@ caveman mode                 # compress the final summary only; "stop caveman" t
 /goal gate add "./verify.sh" # Hermes: per-task gate (the pre_verify hook already covers the default)
 ```
 ```bash
+# sign in once per machine (each opens the browser; skip the platforms you don't use)
+gh auth login
+railway login
+wrangler login
+aws configure sso
+gcloud auth login
+gws auth setup && gws auth login
+gam oauth create
+```
+```bash
 # only if the installer told you it could not do it itself
 hermes plugins install obra/superpowers --enable --force     # Superpowers on Hermes instead of the bundled skills
 claude plugin install <lang>-lsp@claude-plugins-official --scope project   # a stack kit-init did not detect
@@ -220,8 +230,8 @@ The dominant failure mode is context exhaustion, not missing capability.
 
 ## Requirements
 - macOS or Linux (launchd auto-start is macOS-only)
-- Node.js 18+, `gh` CLI (authenticated)
-- `gitleaks`, `osv-scanner`, `uv` (for `uvx zizmor`) — installed automatically (brew, or release binaries)
+- Node.js 22+ (`wrangler` requires it; everything else runs on 18+)
+- Installed automatically (brew, or official release binaries / npm / uv on Linux): `gitleaks`, `osv-scanner`, `uv` (for `uvx zizmor`), `gh`, `railway`, `wrangler`, `cloudflared`, `aws`, `gcloud`, `gws`, `gam`
 - Claude Code sandbox: macOS Seatbelt built in; Linux needs `bubblewrap` + `socat`
 
 ## Directory layout
