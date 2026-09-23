@@ -137,23 +137,45 @@ hermes plugins install obra/superpowers --enable --force     # Superpowers on He
 claude plugin install <lang>-lsp@claude-plugins-official --scope project   # a stack kit-init did not detect
 ```
 
-## Staying current
+## Staying current — automatic, event-driven, no schedule
 
-Nothing is version-pinned; every install pulls the latest **at every layer**:
+Nothing is pinned and nothing is copied: the kit ships only its own files, and every third-party
+skill is fetched fresh from its author's repo at install/update time.
+
+**Updates apply themselves.** Three triggers, all events — no cron, no polling loop:
+
+| Trigger | What fires | Covers |
+|---|---|---|
+| **You start a session** | Claude Code `SessionStart` / Hermes `on_session_start` → `kit-update --if-stale 1 --background` (returns instantly; checks at most once an hour) | kit, Graphify, Caveman, Taste, armed repos |
+| **GitHub push** (optional, instant) | GitHub webhook → Hermes webhook route → `kit-update` (route returns `[SILENT]`: no agent run, zero LLM cost) | repos you administer — the kit or your fork |
+| **You ask** | `kit-update` (apply now) · `kit-update --check` (report; exit 10 = updates) | everything |
+
+`kit-update` compares remote HEADs (`git ls-remote`, ~1 s) with what's installed, and only when
+something moved: pulls the kit → re-fetches upstream skills → refreshes installed skills for every
+host you set up → updates hook scripts in every repo you ran `kit-init` in. Repo files you edited or
+deleted are detected (compared against every version the kit ever shipped) and left alone;
+`verify.sh`, `AGENTS.md` and `settings.json` are always yours. Log: `~/.config/skill-starter-kit/update.log`.
+
+Turn on push updates (needs Hermes; GitHub must reach the gateway's port 8644):
+```bash
+kit-webhook enable                                   # route + script + webhook platform
+hermes gateway run                                   # or: hermes gateway install (service)
+tailscale funnel 8644                                # any public URL works (cloudflared, ngrok…)
+kit-webhook enable --url https://<your-public-host>  # creates the GitHub webhook via gh
+kit-webhook status
+```
+GitHub only sends webhooks for repos you administer, so upstream skills you don't own are picked
+up by the session-start check instead.
 
 | Layer | How it stays live |
 |-------|-------------------|
-| Kit-owned skills (taste-code, LSP, GitHub MCP, Security Gate, Verify Gate, Browser Verify, Docs Freshness, Guardrails, recall) | `git pull --ff-only` on the kit, then installed copies are **refreshed in place** |
-| **Third-party skills** (Graphify, Caveman, Taste) | **Fetched from their upstream repo on every install** (`install/upstreams.tsv`), kit scoping re-applied from `install/overlays/`, upstream commit recorded in `.upstream`. Offline → falls back to the vendored copy in `skills/`. `install/refresh-vendored.sh` updates the vendored copies for committing. |
-| Plugins (Superpowers, Supermemory, Anthropic plugins, LSP) | Registered by GitHub repo, never a pinned ref; `/plugin` refreshes |
-| Supermemory server | Upstream install script re-runs each time |
-| GitHub MCP | Official remote endpoint, updated server-side |
-| CLIs (gitleaks, osv-scanner, uv/zizmor) | `brew install` if missing; `brew upgrade` is yours |
+| Kit-owned skills | `git pull --ff-only`, installed copies refreshed in place |
+| Third-party skills (Graphify, Caveman, Taste) | Fetched from upstream (`install/upstreams.tsv`), kit scoping re-applied from `install/overlays/`, commit recorded in `.upstream` |
+| Plugins (Superpowers, Supermemory, Anthropic, LSP) | Installed/updated by the installer; Claude Code refreshes marketplaces itself |
+| CLIs (gitleaks, osv-scanner, uv) | brew, or official GitHub release binaries on Linux |
 
-Re-run the installer to update any machine. `KIT_NO_PULL=1` skips the kit pull;
-`KIT_NO_UPSTREAM=1` installs vendored copies only. Dirty tree → pull skipped; offline → soft-fail
-to local copies. Edits to *installed* copies are overwritten — edit in the repo (kit-owned) or in
-`install/overlays/` (third-party).
+`KIT_NO_AUTOUPDATE=1` skips the session-start hook · `KIT_NO_UPSTREAM=1` reuses the last fetched
+copies · offline → soft-fails to what's already installed.
 
 ## Deliberately rejected
 
@@ -193,7 +215,7 @@ The dominant failure mode is context exhaustion, not missing capability.
 ## Requirements
 - macOS or Linux (launchd auto-start is macOS-only)
 - Node.js 18+, `gh` CLI (authenticated)
-- `gitleaks`, `osv-scanner`, `uv` (for `uvx zizmor`) — installers `brew install` them if missing
+- `gitleaks`, `osv-scanner`, `uv` (for `uvx zizmor`) — installed automatically (brew, or release binaries)
 - Claude Code sandbox: macOS Seatbelt built in; Linux needs `bubblewrap` + `socat`
 
 ## Directory layout
@@ -204,12 +226,17 @@ The dominant failure mode is context exhaustion, not missing capability.
 │   ├── lib.sh               # self-update, UPSTREAM FETCH + overlays, refresh-in-place sync
 │   ├── upstreams.tsv        # skill → upstream repo/ref/path
 │   ├── overlays/<skill>/    # kit scoping re-applied over fresh upstream (description, PREPEND, replace/)
-│   ├── refresh-vendored.sh  # maintainer: pull upstream into skills/ for committing
+│   ├── kit-update.sh        # detect + apply updates (kit, upstream skills, armed repos)
+│   ├── kit-webhook.sh       # GitHub push → Hermes webhook → kit-update
 │   ├── install.sh           # Claude Code
 │   ├── hermes.sh            # Hermes
 │   └── init-project.sh      # per repo: AGENTS.md, verify.sh, hooks, settings, .npmrc
-├── skills/                  # portable skills (kit-owned + vendored fallbacks)
+├── skills/                  # the kit's own skills (third-party ones are fetched, never copied)
 │   └── guardrails/templates # guard.sh, format.sh, verify-nudge.sh, claude-settings.json, hermes-hooks.yaml
 ├── templates/project/       # AGENTS.md, CLAUDE.md, .npmrc, pnpm-workspace.yaml, .yarnrc.yml, bunfig.toml
 └── evals/                   # task cases + runner: how you prove a component earns its keep
 ```
+
+## License
+
+Public domain ([Unlicense](LICENSE)). Use, copy, modify, sell, relicense — anything, no conditions.

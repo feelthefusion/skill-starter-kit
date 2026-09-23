@@ -88,8 +88,8 @@ ensure_cli_tool() {  # ensure_cli_tool <gitleaks|osv-scanner|uv>
 
 # -----------------------------------------------------------------------------
 # UPSTREAM FETCH — third-party skills are pulled from THEIR source repo before
-# install, so a kit install always lands the latest upstream version, not the
-# copy vendored in skills/ (which is the offline fallback).
+# install, so a kit install always lands the latest upstream version. The kit
+# never ships copies of them; offline, the last fetched copy in .cache is reused.
 #
 # Manifest: install/upstreams.tsv — one line per skill:
 #   <skill-dir>  <github owner/repo>  <ref>  <path in repo (file or dir)>
@@ -97,16 +97,16 @@ ensure_cli_tool() {  # ensure_cli_tool <gitleaks|osv-scanner|uv>
 # top of the fresh upstream copy (see apply_overlays). Fetched skills land in
 # $KIT_ROOT/.cache/upstream/<skill>/ (gitignored); tracked files are never
 # touched, so kit_self_update's clean-tree check keeps working.
-# Env: KIT_NO_UPSTREAM=1 to skip and install the vendored copies only.
+# Env: KIT_NO_UPSTREAM=1 to skip the fetch and reuse the last fetched copies.
 # -----------------------------------------------------------------------------
 kit_fetch_upstreams() {
     local root="$1" manifest="$1/install/upstreams.tsv" cache="$1/.cache/upstream"
     if [ "${KIT_NO_UPSTREAM:-0}" = "1" ]; then
-        echo "▶ upstream fetch skipped (KIT_NO_UPSTREAM=1) — using vendored copies"
+        echo "▶ upstream fetch skipped (KIT_NO_UPSTREAM=1) — using last fetched copies"
         return 0
     fi
-    [ -f "$manifest" ] || { echo "▶ no upstreams.tsv — using vendored copies"; return 0; }
-    command -v git >/dev/null 2>&1 || { echo "▶ git missing — using vendored copies"; return 0; }
+    [ -f "$manifest" ] || { echo "▶ no upstreams.tsv — nothing to fetch"; return 0; }
+    command -v git >/dev/null 2>&1 || { echo "▶ git missing — third-party skills skipped"; return 0; }
 
     echo "▶ fetching latest upstream versions of third-party skills"
     mkdir -p "$cache"
@@ -120,20 +120,20 @@ kit_fetch_upstreams() {
                 "https://github.com/$repo.git" "$tmp" 2>/dev/null \
            || ! git -C "$tmp" sparse-checkout set --no-cone "$path" 2>/dev/null \
            || ! git -C "$tmp" checkout --quiet "$ref" 2>/dev/null; then
-            echo "  ⚠ $name  fetch from $repo failed (offline?) — vendored copy will be used"
+            echo "  ⚠ $name  fetch from $repo failed (offline?) — keeping last fetched copy if any"
             rm -rf "$tmp"
             continue
         fi
         src="$tmp/$path"
         dst="$cache/$name"
-        rm -rf "$dst"; mkdir -p "$dst"
+        if [ -d "$src" ] || [ -f "$src" ]; then rm -rf "$dst"; mkdir -p "$dst"; fi
         if [ -d "$src" ]; then
             cp -R "$src/." "$dst/"
         elif [ -f "$src" ]; then
             cp "$src" "$dst/SKILL.md"          # single-file upstream (e.g. graphify/skill.md)
         else
-            echo "  ⚠ $name  path '$path' not found in $repo@$ref — vendored copy will be used"
-            rm -rf "$tmp" "$dst"
+            echo "  ⚠ $name  path '$path' not found in $repo@$ref — skipped"
+            rm -rf "$tmp"
             continue
         fi
         printf 'upstream: %s\nref: %s\npath: %s\ncommit: %s\nfetched: %s\n' \
@@ -207,7 +207,7 @@ PY
 }
 
 # Resolve where a skill should be copied FROM: the freshly fetched upstream copy
-# when the fetch succeeded, else the vendored copy in skills/.
+# (or the last one fetched), else the kit's own skills/ dir.
 #   $1 = kit root   $2 = skill name   → prints the source dir
 skill_src() {
     local root="$1" name="$2"
@@ -226,7 +226,7 @@ sync_skill() {
     local src="$1" dst="$2" name
     name="$(basename "$dst")"
     if [ ! -d "$src" ]; then
-        echo "  · $name  not found in kit — skipped"
+        echo "  · $name  not available (upstream fetch failed and no earlier copy) — re-run online"
         return 0
     fi
     if [ -d "$dst" ] && diff -rq "$src" "$dst" >/dev/null 2>&1; then

@@ -197,6 +197,10 @@ fi
 grep -qx '.verify.lock/' "$DEST/.gitignore" 2>/dev/null || echo '.verify.lock/' >> "$DEST/.gitignore"
 # per-repo stamp so "which kit version armed this repo" is answerable
 printf 'kit: %s\ninit: %s\n' "$(git -C "$KIT_ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)" "$(date -u +%FT%TZ)" > "$DEST/.claude/kit-version"
+# register for kit-update (hook files you haven't edited follow kit updates automatically)
+KSTATE="${KIT_STATE_DIR:-$HOME/.config/skill-starter-kit}"; mkdir -p "$KSTATE"
+grep -qxF "$DEST" "$KSTATE/projects" 2>/dev/null || echo "$DEST" >> "$KSTATE/projects"
+echo "  · registered for auto-update ($KSTATE/projects) ✓"
 
 cat <<'TXT'
 

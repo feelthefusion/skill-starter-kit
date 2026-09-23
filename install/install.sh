@@ -21,7 +21,7 @@
 #
 # LIVE BY DESIGN: pulls the kit from GitHub, FETCHES third-party skills from their upstream
 # repos (kit overlays re-applied), and REFRESHES installed skills in place. Re-run to update.
-# Env: KIT_NO_PULL=1 (skip kit pull) · KIT_NO_UPSTREAM=1 (skip upstream fetch, use vendored)
+# Env: KIT_NO_PULL=1 (skip kit pull) · KIT_NO_UPSTREAM=1 (skip upstream fetch, use last fetched) · KIT_NO_AUTOUPDATE=1 (no session-start update check)
 # =============================================================================
 set -euo pipefail
 
@@ -294,6 +294,23 @@ MD
 echo "▶ always-on workflow"
 write_claude_stanza
 mkdir -p "$HOME/.local/bin" && ln -sf "$KIT_ROOT/install/init-project.sh" "$HOME/.local/bin/kit-init" && echo "  · kit-init → ~/.local/bin/kit-init ✓ (run it in any repo)"
+for c in kit-update kit-webhook; do ln -sf "$KIT_ROOT/install/$c.sh" "$HOME/.local/bin/$c"; done
+echo "  · kit-update, kit-webhook → ~/.local/bin ✓"
+
+# --- auto-update on session start (event-driven, not scheduled): user-level SessionStart hook
+#     runs `kit-update --if-stale 1 --background` — returns instantly, checks ≤ once an hour.
+if [ "${KIT_NO_AUTOUPDATE:-0}" != "1" ]; then
+    python3 - "$HOME/.claude/settings.json" <<'PY' && echo "  · auto-update: SessionStart → kit-update (background, ≤1×/hour) ✓"
+import json, os, sys
+p = sys.argv[1]; os.makedirs(os.path.dirname(p), exist_ok=True)
+d = json.load(open(p)) if os.path.exists(p) and os.path.getsize(p) else {}
+cmd = "$HOME/.local/bin/kit-update --if-stale 1 --background"
+ss = d.setdefault("hooks", {}).setdefault("SessionStart", [])
+if not any(h.get("command") == cmd for g in ss for h in g.get("hooks", [])):
+    ss.append({"hooks": [{"type": "command", "command": cmd, "timeout": 10}]})
+json.dump(d, open(p, "w"), indent=2); open(p, "a").write("\n")
+PY
+fi
 
 # --- actually install the plugins when a claude binary can be found ------------------
 # PATH first; then the Claude desktop app's bundled Claude Code (newest version dir).

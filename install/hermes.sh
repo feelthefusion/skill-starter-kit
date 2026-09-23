@@ -21,7 +21,7 @@
 #
 # LIVE BY DESIGN: pulls the kit from GitHub, FETCHES third-party skills from their upstream
 # repos, re-applies kit overlays, and REFRESHES installed skills in place. Re-run to update.
-# Env: KIT_NO_PULL=1 (skip kit pull) · KIT_NO_UPSTREAM=1 (skip upstream fetch, use vendored)
+# Env: KIT_NO_PULL=1 (skip kit pull) · KIT_NO_UPSTREAM=1 (skip upstream fetch, use last fetched) · KIT_NO_AUTOUPDATE=1 (no session-start update check)
 # =============================================================================
 set -euo pipefail
 
@@ -44,7 +44,7 @@ echo
 
 mkdir -p "$HERMES_SKILLS_DIR/$CATEGORY"
 
-# --- portable skills (upstream-fetched copy when available, vendored otherwise)
+# --- portable skills (third-party ones fetched fresh from upstream)
 KIT_SKILLS="graphify taste-skill taste-code caveman caveman-commit lsp-plugins github-mcp security-gate verify-gate browser-verify docs-freshness guardrails"
 for skill in $KIT_SKILLS; do
     sync_skill "$(skill_src "$KIT_ROOT" "$skill")" "$HERMES_SKILLS_DIR/$CATEGORY/$skill"
@@ -126,8 +126,12 @@ echo "▶ guardrails hook scripts → $HOOKS_DIR ✓"
 if [ "${KIT_NO_HOOKS:-0}" != "1" ] && command -v hermes >/dev/null 2>&1; then
     # same contract as skills/guardrails/templates/hermes-hooks.yaml, written with `hermes config set`
     # (never hand-edit config.yaml). Existing hooks are preserved: we only add ours if absent.
-    KIT_HOOKS_JSON='{"pre_tool_call":[{"matcher":"terminal","command":"~/.hermes/agent-hooks/guard.sh","timeout":5,"fail_closed":true}],"post_tool_call":[{"matcher":"write_file|patch","command":"~/.hermes/agent-hooks/format.sh","timeout":30}],"pre_verify":[{"command":"~/.hermes/agent-hooks/verify-nudge.sh","timeout":180}]}'
-    if hermes config get hooks 2>/dev/null | grep -q 'agent-hooks/guard.sh'; then
+    KIT_HOOKS_JSON='{"pre_tool_call":[{"matcher":"terminal","command":"~/.hermes/agent-hooks/guard.sh","timeout":5,"fail_closed":true}],"post_tool_call":[{"matcher":"write_file|patch","command":"~/.hermes/agent-hooks/format.sh","timeout":30}],"pre_verify":[{"command":"~/.hermes/agent-hooks/verify-nudge.sh","timeout":180}],"on_session_start":[{"command":"~/.local/bin/kit-update --if-stale 1 --background","timeout":10}]}'
+    [ "${KIT_NO_AUTOUPDATE:-0}" = "1" ] && KIT_HOOKS_JSON="$(printf '%s' "$KIT_HOOKS_JSON" | python3 -c 'import json,sys; d=json.load(sys.stdin); d.pop("on_session_start",None); print(json.dumps(d))')"
+    if [ "$(hermes config get --json hooks 2>/dev/null | python3 -c '
+import json,sys
+cur=json.load(sys.stdin) or {}; kit=json.loads(sys.argv[1])
+print(all(any(isinstance(x,dict) and x.get("command")==e["command"] for x in (cur.get(ev) or [])) for ev,es in kit.items() for e in es))' "$KIT_HOOKS_JSON" 2>/dev/null)" = "True" ]; then
         echo "  · hermes hooks already wired ✓"
     else
         # merge: keep every existing hook, append ours per event (JSON in, JSON out)
@@ -143,7 +147,7 @@ for ev, entries in kit.items():
             have.append(e)
     cur[ev] = have
 print(json.dumps(cur))' "$KIT_HOOKS_JSON" 2>/dev/null || echo "$KIT_HOOKS_JSON")"
-        hermes config set hooks "$MERGED" >/dev/null 2>&1 && echo "  · hermes hooks wired (pre_tool_call guard, post_tool_call format, pre_verify; existing hooks kept) ✓" \
+        hermes config set hooks "$MERGED" >/dev/null 2>&1 && echo "  · hermes hooks wired (guard, format, pre_verify, on_session_start auto-update; existing hooks kept) ✓" \
             || echo "  ⚠ hermes config set hooks failed — apply skills/guardrails/templates/hermes-hooks.yaml manually"
         hermes config set hooks_auto_accept false >/dev/null 2>&1 || true
     fi
@@ -152,6 +156,8 @@ else
     echo "  · hooks not wired (hermes CLI missing or KIT_NO_HOOKS=1) — see skills/guardrails/templates/hermes-hooks.yaml"
 fi
 mkdir -p "$HOME/.local/bin" && ln -sf "$KIT_ROOT/install/init-project.sh" "$HOME/.local/bin/kit-init" && echo "  · kit-init → ~/.local/bin/kit-init ✓ (run it in any repo)"
+for c in kit-update kit-webhook; do ln -sf "$KIT_ROOT/install/$c.sh" "$HOME/.local/bin/$c"; done
+echo "  · kit-update, kit-webhook → ~/.local/bin ✓"
 
 echo
 echo "─── done ───────────────────────────────────────────────"

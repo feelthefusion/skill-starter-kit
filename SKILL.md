@@ -82,7 +82,7 @@ curl -fsSL https://raw.githubusercontent.com/feelthefusion/skill-starter-kit/mai
 ```
 Each run: `git pull` the kit → **fetch each third-party skill from upstream** → apply overlays →
 refresh installed skills in place → record `.kit-version` (+ per-skill `.upstream`).
-`KIT_NO_PULL=1` skips the kit pull; `KIT_NO_UPSTREAM=1` installs vendored copies only. Dirty
+`KIT_NO_PULL=1` skips the kit pull; `KIT_NO_UPSTREAM=1` reuses the last fetched copies. Dirty
 tree or offline → soft-fails to local copies. Edits to *installed* copies are overwritten —
 edit in the repo.
 
