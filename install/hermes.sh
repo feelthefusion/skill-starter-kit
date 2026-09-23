@@ -147,7 +147,12 @@ for ev, entries in kit.items():
             have.append(e)
     cur[ev] = have
 print(json.dumps(cur))' "$KIT_HOOKS_JSON" 2>/dev/null || echo "$KIT_HOOKS_JSON")"
-        hermes config set hooks "$MERGED" >/dev/null 2>&1 && echo "  · hermes hooks wired (guard, format, pre_verify, on_session_start auto-update; existing hooks kept) ✓" \
+        # one key per event (`hooks.<event>`): replacing the whole section needs --force and
+        # would touch events the kit doesn't own
+        printf '%s' "$MERGED" | python3 -c '
+import json, sys
+for ev, entries in json.load(sys.stdin).items(): print(ev + "\t" + json.dumps(entries))' \
+        | { ok=1; while IFS=$'\t' read -r ev val; do hermes config set "hooks.$ev" "$val" >/dev/null 2>&1 || ok=0; done; [ "$ok" = 1 ]; } && echo "  · hermes hooks wired (guard, format, pre_verify, on_session_start auto-update; existing hooks kept) ✓" \
             || echo "  ⚠ hermes config set hooks failed — apply skills/guardrails/templates/hermes-hooks.yaml manually"
         hermes config set hooks_auto_accept false >/dev/null 2>&1 || true
     fi

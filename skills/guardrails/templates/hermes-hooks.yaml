@@ -15,4 +15,7 @@ hooks:
   pre_verify:                      # verify-gate: Hermes' Stop-hook equivalent (fires when code was edited)
     - command: "~/.hermes/agent-hooks/verify-nudge.sh"
       timeout: 180
+  on_session_start:                # auto-update: kit-update (background, ≤1×/hour) when a session starts
+    - command: "~/.local/bin/kit-update --if-stale 1 --background"
+      timeout: 10
 hooks_auto_accept: false           # keep first-use consent prompts

@@ -54,7 +54,13 @@ fi
 # background: return to the caller (a session-start hook) immediately
 if [ "$BG" = 1 ]; then
     args=(); [ "$MODE" = check ] && args+=(--check); [ "$FORCE" = 1 ] && args+=(--force)
-    nohup bash "$SELF" "${args[@]}" >>"$LOG" 2>&1 </dev/null &
+    # own session so the host (hook runner / webhook gateway) can't take it down with its group
+    if command -v setsid >/dev/null 2>&1; then
+        setsid nohup bash "$SELF" ${args[@]+"${args[@]}"} >>"$LOG" 2>&1 </dev/null &
+    else
+        nohup python3 -c 'import os,sys; os.setsid(); os.execvp("bash", ["bash"]+sys.argv[1:])' \
+            "$SELF" ${args[@]+"${args[@]}"} >>"$LOG" 2>&1 </dev/null &
+    fi
     exit 0
 fi
 

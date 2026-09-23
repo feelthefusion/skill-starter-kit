@@ -62,12 +62,13 @@ SH
     chmod +x "$HH/scripts/kit-update-webhook.sh"
     echo "  · route script → $HH/scripts/kit-update-webhook.sh ✓"
 
-    # 2. webhook platform on (only adds what's missing to ~/.hermes/.env)
+    # 2. webhook platform on: settings in config.yaml, only the global secret in .env
+    hermes config set platforms.webhook.enabled true >/dev/null
+    hermes config get platforms.webhook.extra.port 2>/dev/null | grep -q '[0-9]' \
+        || hermes config set platforms.webhook.extra.port "$PORT" >/dev/null
     touch "$HH/.env"; chmod 600 "$HH/.env"
-    grep -q '^WEBHOOK_ENABLED=' "$HH/.env" || echo 'WEBHOOK_ENABLED=true' >> "$HH/.env"
-    grep -q '^WEBHOOK_PORT=' "$HH/.env"    || echo "WEBHOOK_PORT=$PORT" >> "$HH/.env"
-    grep -q '^WEBHOOK_SECRET=' "$HH/.env"  || echo "WEBHOOK_SECRET=$(openssl rand -hex 24)" >> "$HH/.env"
-    echo "  · webhook platform enabled in $HH/.env ✓"
+    grep -q '^WEBHOOK_SECRET=' "$HH/.env" || echo "WEBHOOK_SECRET=$(openssl rand -hex 24)" >> "$HH/.env"
+    echo "  · webhook platform enabled (config.yaml platforms.webhook, port $PORT) ✓"
 
     # 3. subscription with a secret we keep (GitHub needs the same one)
     SECRET_FILE="$STATE/webhook-secret"
@@ -75,7 +76,7 @@ SH
     hermes webhook remove "$ROUTE" >/dev/null 2>&1 || true
     hermes webhook subscribe "$ROUTE" --events push --script kit-update-webhook.sh \
         --secret "$(cat "$SECRET_FILE")" --description "Skill Starter Kit: GitHub push → kit-update" \
-        --prompt "kit push {after}" >/dev/null \
+        --prompt "kit push {after}" >/dev/null 2>&1; hermes webhook list 2>/dev/null | grep -q "$ROUTE" \
         && echo "  · hermes webhook route /webhooks/$ROUTE ✓" \
         || { echo "✗ hermes webhook subscribe failed (is the gateway configured? run: hermes gateway setup)"; exit 1; }
 
