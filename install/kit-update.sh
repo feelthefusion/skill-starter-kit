@@ -153,6 +153,7 @@ fi
             echo "  · $repo: $f edited by you — kept"
         fi
     done
-    [ "$touched" = 1 ] && printf 'kit: %s\nupdated: %s\n' "$(git -C "$KIT_ROOT" rev-parse --short HEAD 2>/dev/null)" "$(date -u +%FT%TZ)" > "$repo/.claude/kit-version"
+    # stamp every armed repo: it is now in sync with this kit revision (hooks updated or confirmed current)
+    [ -d "$repo/.claude" ] && printf 'kit: %s\nupdated: %s\n' "$(git -C "$KIT_ROOT" rev-parse --short HEAD 2>/dev/null)" "$(date -u +%FT%TZ)" > "$repo/.claude/kit-version"
 done < "$PROJECTS"
 echo "✓ done"
