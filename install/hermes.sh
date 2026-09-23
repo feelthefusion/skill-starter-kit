@@ -45,7 +45,7 @@ echo
 mkdir -p "$HERMES_SKILLS_DIR/$CATEGORY"
 
 # --- portable skills (third-party ones fetched fresh from upstream)
-KIT_SKILLS="graphify taste-skill taste-code caveman caveman-commit lsp-plugins github-mcp security-gate verify-gate browser-verify docs-freshness guardrails"
+KIT_SKILLS="graphify taste-skill taste-code caveman caveman-commit lsp-plugins github-mcp security-gate verify-gate browser-verify docs-freshness guardrails consistency"
 for skill in $KIT_SKILLS; do
     sync_skill "$(skill_src "$KIT_ROOT" "$skill")" "$HERMES_SKILLS_DIR/$CATEGORY/$skill"
 done

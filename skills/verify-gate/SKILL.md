@@ -148,7 +148,7 @@ cheapest way to close a manufactured finding is the slop `taste-code` exists to 
   ("evidence before claims"). Keep both: the skill shapes the habit, the hook enforces it. On
   Hermes the bundled skills play the same role.
 - **`security-gate`** supplies the dependency/Actions steps; **`browser-verify`** supplies the
-  smoke spec; **`lsp-plugins`** catches per-file type errors *before* the gate runs so fewer
+  smoke spec; **`consistency`** supplies the every-surface-agrees spec; **`lsp-plugins`** catches per-file type errors *before* the gate runs so fewer
   turns bounce.
 - **`caveman`** must never touch the output this gate produces.
 - **`taste-code`** — when the gate fails, fix the cause; a suppression that turns it green is

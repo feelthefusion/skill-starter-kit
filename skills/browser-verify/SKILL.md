@@ -49,7 +49,8 @@ whatever the model already believed.
 
 For an app (not a static page), add one Playwright spec covering the critical path — load, auth
 if any, the primary action, no console errors — and put it in the `verify` script from
-`verify-gate`. One spec that actually runs beats twelve that are aspirational.
+`verify-gate`. One spec that actually runs beats twelve that are aspirational. The one
+addition: a feature shown on several surfaces gets a `consistency` spec (see that skill).
 
 ```bash
 npx playwright test --reporter=line   # add to verify
@@ -88,6 +89,8 @@ When something renders but misbehaves, read the runtime instead of guessing:
   turn like a failed unit test.
 - **Superpowers `systematic-debugging`** (or Hermes' bundled one) — DevTools console/network
   reads are its "reproduce and observe" phase for browser bugs.
+- **`consistency`** — for coupons, prices, totals and anything else shown on several surfaces,
+  its agreement spec is the one extra spec worth adding to `verify`.
 - **`guardrails`** — the sandbox's network allowlist governs which hosts the browser MCPs may
   reach; approve the dev server, not the internet.
 

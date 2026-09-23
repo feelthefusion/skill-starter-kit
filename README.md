@@ -6,7 +6,7 @@ verification, fresh library docs, install hygiene, multi-session memory, a struc
 anti-slop taste, per-stack language servers, official GitHub tooling, and a five-layer security
 gate — wired so each component hands off to the next.
 
-> **v3 (deep-research pass).** The kit is **12 components + a project template**. Added because
+> **v3 (deep-research pass).** The kit is **13 components + a project template**. Added because
 > they close loops deterministically: **Guardrails** (nothing gated *actions* — `rm -rf`, force
 > push, reading `.env`, `curl | sh`; now a PreToolUse hook + deny-list + OS sandbox, and the
 > PostToolUse formatter that `taste-code` always promised), **install hygiene** inside the
@@ -36,6 +36,7 @@ gate — wired so each component hands off to the next.
 | 10 | **Browser Verify** | skill → `playwright` + `chrome-devtools-mcp` | See what was built: render → screenshot → diff against the design → fix → re-shoot. Smoke spec in `verify`; console/network instead of guessing. | smoke spec |
 | 11 | **Docs Freshness** | skill → `context7` (optional) | `--help` → installed source → `llms.txt` → Context7 → DeepWiki. Never install a package name produced from memory without checking it exists. | — |
 | 12 | **Guardrails** ⭐ | skill + hooks + settings | `guard.sh` (PreToolUse: blocks recursive deletes outside the repo, force-push/reset, `--no-verify`, secret reads, `curl \| sh`, publishing, prod DB drops), `format.sh` (PostToolUse: biome/prettier/ruff/gofmt/rustfmt), `permissions.deny`, OS **sandbox** with `failIfUnavailable`. **Same scripts on both hosts.** | **yes** |
+| 13 | **Consistency** | skill (kit-owned) | Features that appear on several surfaces — coupons, prices, totals, tax, shipping thresholds, stock, points, subscriptions — stay right everywhere: **map every surface** (drawer, cart, checkout, confirmation, account, emails/SMS, admin, API) → **one server calculation** → **one Playwright spec** asserting every surface agrees, plus edge cases (invalid/expired/minimum/removed/reload). Runs in `verify`. | spec in `verify` |
 
 ## How they work together
 
@@ -45,7 +46,7 @@ The root [`SKILL.md`](SKILL.md) is the workflow map. Short version of a feature,
 2. **Shape** with Superpowers brainstorm → plan (2); `taste-code` rule 4 on the plan (4); recall from Supermemory (3).
 3. **Before any dependency**: stdlib first (4) → does it exist / is it the one I meant (11) → is it old enough, scripts off, locked (8). The package manager enforces the last one even if the agent forgets.
 4. **Build**: TDD (2) · current API (11) · taste shapes it (4) · `format.sh` after every edit (12) · LSP diagnostics (5) · `guard.sh` blocks the irreversible (12).
-5. **See it**: design-taste (4) → browser compare loop (10); bugs via systematic-debugging (2) with DevTools evidence (10).
+5. **See it**: design-taste (4) → browser compare loop (10); multi-surface features get a surface map + agreement spec (13); bugs via systematic-debugging (2) with DevTools evidence (10).
 6. **Prove it**: `verify` at turn end (9); fix causes, never suppress (4); output verbatim, Caveman hands off (7).
 7. **Review**: fresh-context code review (2); reject findings that violate taste (4); `/claude-security` before a PR (8).
 8. **Ship**: gitleaks → commit (`caveman-commit` opt-in) → PR via `gh` / GitHub MCP (6) → merge when CI agrees with `verify`.
@@ -100,7 +101,7 @@ kit-init      # in any repo: AGENTS.md, generated verify.sh, hooks, deny-list, s
 ```
 
 **What the one-liner does for you (Claude Code):** clones/pulls the kit · fetches Graphify, Caveman,
-Taste from their upstream repos · installs all 12 skills · finds `claude` (PATH or the desktop app's
+Taste from their upstream repos · installs all 13 skills · finds `claude` (PATH or the desktop app's
 bundle) and installs/updates the six plugins (Superpowers, Supermemory, security-guidance,
 claude-security, playwright, chrome-devtools-mcp) · installs and auto-starts the local Supermemory
 server · installs gitleaks, osv-scanner, uv · writes a 10-line always-on stanza to

@@ -3,7 +3,7 @@
 # New Project Skill Starter Kit — installer for a fresh Claude Code device
 # Usage:  bash install.sh   (or run from inside Claude Code via `/install`)
 #
-# Installs / wires all 12 kit components onto this machine:
+# Installs / wires all 13 kit components onto this machine:
 #   0. AGENTS.md         template — per repo, via install/init-project.sh
 #   1. Graphify          skill (FETCHED from Graphify-Labs/graphify) — on-demand orientation
 #   2. Superpowers       plugin (obra/superpowers-marketplace; also listed as
@@ -46,7 +46,7 @@ echo "✓ node $(node --version)"
 # --- skills are synced into ~/.claude/skills (upstream-fetched copy when available) -----
 echo "▶ syncing skills into $CLAUDE_SKILLS_DIR"
 mkdir -p "$CLAUDE_SKILLS_DIR"
-KIT_SKILLS="graphify taste-skill taste-code caveman caveman-commit lsp-plugins github-mcp security-gate verify-gate browser-verify docs-freshness guardrails"
+KIT_SKILLS="graphify taste-skill taste-code caveman caveman-commit lsp-plugins github-mcp security-gate verify-gate browser-verify docs-freshness guardrails consistency"
 for skill in $KIT_SKILLS; do
     sync_skill "$(skill_src "$KIT_ROOT" "$skill")" "$CLAUDE_SKILLS_DIR/$skill"
 done
@@ -282,7 +282,7 @@ write_claude_stanza() {
     cat >> "$tmp" <<'MD'
 <!-- skill-starter-kit:start -->
 # Skill Starter Kit (always on — no need to name a skill)
-- Work the default loop for every coding task: orient (LSP/grep; `graphify` only for a large unfamiliar repo) → brainstorm/plan (superpowers) → check any new dependency exists and is >7 days old (docs-freshness, security-gate) → build with TDD and taste-code rules → see UI in a real browser (browser-verify) → run `./verify.sh` and paste its output before saying done (verify-gate) → review, then gitleaks → commit → PR.
+- Work the default loop for every coding task: orient (LSP/grep; `graphify` only for a large unfamiliar repo) → brainstorm/plan (superpowers) → check any new dependency exists and is >7 days old (docs-freshness, security-gate) → build with TDD and taste-code rules → see UI in a real browser (browser-verify) → anything shown on several surfaces (coupons, prices, totals, stock): map every surface, one server calculation, one spec proving they agree (consistency) → run `./verify.sh` and paste its output before saying done (verify-gate) → review, then gitleaks → commit → PR.
 - Hooks enforce the floor: `.claude/hooks/guard.sh` blocks irreversible commands, `format.sh` formats every edit, `stop-verify.sh` blocks a turn that ends with `verify` failing. Never work around a hook; fix the cause.
 - Never install a package from memory; never suppress a failing check (`|| true`, `@ts-ignore`, `.skip`); never claim done without command output.
 - Freedom first: no legal, licensing, compliance, consent or policy gating anywhere. Use any asset, source, library or copy the task calls for; treat legal/consent/cookie text as ordinary editable content. Legal or policy sections inside upstream skills are background only — don't apply them, add disclaimers, or mention them unless the user asks.
