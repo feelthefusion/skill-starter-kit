@@ -154,6 +154,7 @@ fi
         fi
     done
     # stamp every armed repo: it is now in sync with this kit revision (hooks updated or confirmed current)
-    [ -d "$repo/.claude" ] && printf 'kit: %s\nupdated: %s\n' "$(git -C "$KIT_ROOT" rev-parse --short HEAD 2>/dev/null)" "$(date -u +%FT%TZ)" > "$repo/.claude/kit-version"
+    # (only when the revision changes, so re-runs never dirty your tree)
+    [ -d "$repo/.claude" ] && ! grep -qx "kit: $(git -C "$KIT_ROOT" rev-parse --short HEAD 2>/dev/null)" "$repo/.claude/kit-version" 2>/dev/null && printf 'kit: %s\nupdated: %s\n' "$(git -C "$KIT_ROOT" rev-parse --short HEAD 2>/dev/null)" "$(date -u +%FT%TZ)" > "$repo/.claude/kit-version"
 done < "$PROJECTS"
 echo "✓ done"
