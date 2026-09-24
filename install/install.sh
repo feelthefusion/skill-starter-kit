@@ -119,6 +119,26 @@ else
     fi
 fi
 
+# 3b. extraction model — memory extraction is short, structured, high-volume work, so the kit
+# defaults to a fast, cheap model: DeepSeek V4.1 Flash via OpenRouter. Applied only when the
+# server talks to OpenRouter, and only over an unset model or the kit's previous default
+# (claude-sonnet-*); any other model you picked is kept. Override: KIT_SUPERMEMORY_MODEL=<id>.
+SM_ENV="$HOME/.supermemory/env"
+SM_MODEL="${KIT_SUPERMEMORY_MODEL:-deepseek/deepseek-v4.1-flash}"
+if [ -f "$SM_ENV" ] && grep -q 'OPENAI_BASE_URL=.*openrouter.ai' "$SM_ENV"; then
+    SM_CUR="$(sed -n 's/^export OPENAI_MODEL="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' "$SM_ENV" | tail -1)"
+    if [ "$SM_CUR" = "$SM_MODEL" ]; then
+        echo "  · extraction model: $SM_MODEL ✓"
+    elif [ -z "$SM_CUR" ] || [ -n "${KIT_SUPERMEMORY_MODEL:-}" ] || case "$SM_CUR" in anthropic/claude-sonnet-*) true ;; *) false ;; esac; then
+        grep -v '^export OPENAI_MODEL=' "$SM_ENV" > "$SM_ENV.tmp" && printf 'export OPENAI_MODEL="%s"\n' "$SM_MODEL" >> "$SM_ENV.tmp" \
+            && chmod 600 "$SM_ENV.tmp" && mv "$SM_ENV.tmp" "$SM_ENV"
+        echo "  · extraction model: ${SM_CUR:-unset} → $SM_MODEL ✓"
+        [ "$(uname -s)" = Darwin ] && launchctl kickstart -k "gui/$(id -u)/com.supermemory.local" >/dev/null 2>&1
+    else
+        echo "  · extraction model: $SM_CUR (your choice — kept; kit default is $SM_MODEL)"
+    fi
+fi
+
 # 3c. launchd auto-start (macOS) — server runs at login
 if [[ "$(uname -s)" == "Darwin" ]]; then
     AGENT="$HOME/Library/LaunchAgents/com.supermemory.local.plist"
