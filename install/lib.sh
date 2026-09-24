@@ -320,3 +320,48 @@ write_kit_version() {
         > "$dir/.kit-version"
     echo "▶ installed kit revision $rev (recorded in $dir/.kit-version)"
 }
+
+# -----------------------------------------------------------------------------
+# PERSISTENT CHECKOUT — the standing CLIs (kit-init/kit-update/kit-webhook) are
+# symlinks into the kit checkout, so it must not live in a temp dir that the OS
+# prunes (/tmp, /var/folders, $TMPDIR). Run from one? Move to ~/.skill-starter-kit
+# (the bootstrap's home) and re-exec the installer from there.
+#   kit_ensure_persistent_root <kit root> <installer file name> [args…]
+# -----------------------------------------------------------------------------
+kit_is_temp_path() {
+    case "$1" in /tmp/*|/private/tmp/*|/var/tmp/*|/private/var/tmp/*|/var/folders/*|/private/var/folders/*) return 0 ;; esac
+    if [ -n "${TMPDIR:-}" ]; then
+        local t; t="$(cd "$TMPDIR" 2>/dev/null && pwd -P)"
+        [ -n "$t" ] && case "$1" in "$t"/*) return 0 ;; esac
+    fi
+    return 1
+}
+kit_ensure_persistent_root() {
+    local root script real home_kit url
+    root="$1"; script="$2"; shift 2
+    real="$(cd "$root" && pwd -P)"
+    kit_is_temp_path "$real/" || return 0
+    home_kit="${KIT_DIR:-$HOME/.skill-starter-kit}"
+    echo "▶ kit is running from a temporary checkout ($real)"
+    echo "  moving to $home_kit so kit-init / kit-update / kit-webhook survive temp cleanup"
+    url="$(git -C "$root" remote get-url origin 2>/dev/null)"
+    [ -n "$url" ] || url="https://github.com/feelthefusion/skill-starter-kit.git"
+    if [ -d "$home_kit/.git" ]; then
+        git -C "$home_kit" pull --ff-only --quiet \
+            || echo "  ⚠ could not fast-forward $home_kit — installing from it as-is"
+    else
+        git clone --quiet --depth 1 "$url" "$home_kit" \
+            || { echo "  ⚠ clone into $home_kit failed — continuing from the temp checkout"; return 0; }
+    fi
+    exec bash "$home_kit/install/$script" "$@"
+}
+
+# Put the kit's standing commands on PATH (both hosts): symlinks into the persistent checkout.
+kit_link_clis() {
+    local root="$1" bin="$HOME/.local/bin"
+    mkdir -p "$bin"
+    ln -sf "$root/install/init-project.sh" "$bin/kit-init"
+    ln -sf "$root/install/kit-update.sh"   "$bin/kit-update"
+    ln -sf "$root/install/kit-webhook.sh"  "$bin/kit-webhook"
+    echo "  · kit-init, kit-update, kit-webhook → $bin (→ $root) ✓"
+}

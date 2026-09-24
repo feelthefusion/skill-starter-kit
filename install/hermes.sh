@@ -28,6 +28,7 @@ set -euo pipefail
 KIT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=install/lib.sh
 source "$KIT_ROOT/install/lib.sh"
+kit_ensure_persistent_root "$KIT_ROOT" hermes.sh "$@"
 KIT_SKILLS_SRC="$KIT_ROOT/skills"
 HERMES_SKILLS_DIR="${HERMES_SKILLS_DIR:-$HOME/.hermes/skills}"
 CATEGORY="${HERMES_CATEGORY:-autonomous-ai-agents}"
@@ -60,6 +61,7 @@ mkdir -p "$RECALL_DST"
 cp "$KIT_ROOT/SKILL.md" "$RECALL_DST/SKILL.md"
 echo "  · skill-starter-kit (recall + workflow map)  written ✓"
 write_kit_version "$KIT_ROOT" "$HERMES_SKILLS_DIR/$CATEGORY"
+kit_link_clis "$KIT_ROOT"   # kit-update runs from the on_session_start hook, so Hermes-only machines need it too
 
 # --- 8/9/12: portable CLI layers (work on any host, no plugins needed) -------
 echo "▶ portable security + verify CLI layers"

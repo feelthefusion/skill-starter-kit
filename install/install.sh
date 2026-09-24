@@ -28,6 +28,7 @@ set -euo pipefail
 KIT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=install/lib.sh
 source "$KIT_ROOT/install/lib.sh"
+kit_ensure_persistent_root "$KIT_ROOT" install.sh "$@"
 KIT_SKILLS_SRC="$KIT_ROOT/skills"
 CLAUDE_SKILLS_DIR="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
 CLAUDE_SETTINGS="$HOME/.claude/settings.json"
@@ -298,9 +299,7 @@ MD
 }
 echo "▶ always-on workflow"
 write_claude_stanza
-mkdir -p "$HOME/.local/bin" && ln -sf "$KIT_ROOT/install/init-project.sh" "$HOME/.local/bin/kit-init" && echo "  · kit-init → ~/.local/bin/kit-init ✓ (run it in any repo)"
-for c in kit-update kit-webhook; do ln -sf "$KIT_ROOT/install/$c.sh" "$HOME/.local/bin/$c"; done
-echo "  · kit-update, kit-webhook → ~/.local/bin ✓"
+kit_link_clis "$KIT_ROOT"
 
 # --- auto-update on session start (event-driven, not scheduled): user-level SessionStart hook
 #     runs `kit-update --if-stale 1 --background` — returns instantly, checks ≤ once an hour.
