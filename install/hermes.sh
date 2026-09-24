@@ -160,7 +160,25 @@ for ev, entries in json.load(sys.stdin).items(): print(ev + "\t" + json.dumps(en
             || echo "  ⚠ hermes config set hooks failed — apply skills/guardrails/templates/hermes-hooks.yaml manually"
         hermes config set hooks_auto_accept false >/dev/null 2>&1 || true
     fi
-    echo "    (first run of each hook asks for consent once — expected)"
+    # Hermes only registers a shell hook that is on its consent allowlist, and it asks for that
+    # consent on a TTY only — desktop, gateway and cron sessions never ask, so unapproved hooks are
+    # silently skipped (guard/format/verify/auto-update would never run). Installing the kit IS the
+    # consent for the kit's own hooks: record exactly these commands with Hermes' own allowlist API
+    # (other hooks stay untouched; `hermes hooks revoke <command>` undoes it).
+    HERMES_PY="$HOME/.hermes/hermes-agent/venv/bin/python"
+    [ -x "$HERMES_PY" ] || HERMES_PY="$HOME/.hermes/hermes-agent/.venv/bin/python"
+    if [ -x "$HERMES_PY" ] && printf '%s' "$KIT_HOOKS_JSON" | (cd "$HOME/.hermes/hermes-agent" && "$HERMES_PY" -c '
+import json, sys
+from agent.shell_hooks import _is_allowlisted, _record_approval
+for ev, entries in json.load(sys.stdin).items():
+    for e in entries:
+        if not _is_allowlisted(ev, e["command"]):
+            _record_approval(ev, e["command"])
+') 2>/dev/null; then
+        echo "  · hermes hooks approved (consent allowlist; \`hermes hooks list\` shows ✓) ✓"
+    else
+        echo "  ⚠ could not record hook consent — run one Hermes session in a terminal and approve the prompt"
+    fi
 else
     echo "  · hooks not wired (hermes CLI missing or KIT_NO_HOOKS=1) — see skills/guardrails/templates/hermes-hooks.yaml"
 fi
