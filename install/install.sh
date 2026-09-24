@@ -179,17 +179,16 @@ print("  · official Anthropic marketplace + security plugins registered ✓")
 PY
 # optional secrets layer
 # 8b. gitleaks — literal-secrets layer (the plugins cover patterns, not credentials)
-ensure_cli_tool gitleaks
-
 # 8c. osv-scanner — dependency-tree layer (layer 4: the code you INSTALLED)
-ensure_cli_tool osv-scanner
-
 # 8d. uv — runs zizmor (`uvx zizmor`) for the GitHub Actions layer, and `uv sync --locked`
-ensure_cli_tool uv
-
 # 8e. cloud CLIs (component 14) — GitHub, Railway, Cloudflare, AWS, Google Cloud, Google Workspace (gws + GAM)
-echo "▶ cloud CLIs"
-for tool in gh railway wrangler cloudflared aws gcloud gws gam; do ensure_cli_tool "$tool"; done
+# A CLI that can't install (e.g. wrangler on Node < 22) is reported, never aborts the rest of the kit.
+echo "▶ security + cloud CLIs"
+MISSING_CLIS=""
+for tool in gitleaks osv-scanner uv gh railway wrangler cloudflared aws gcloud gws gam; do
+    ensure_cli_tool "$tool" || MISSING_CLIS="$MISSING_CLIS $tool"
+done
+[ -z "$MISSING_CLIS" ] || echo "  ⚠ not installed:$MISSING_CLIS — see the messages above, fix, then re-run (the rest of the kit is installed)"
 
 # --- 9,10,11: Verify Gate / Browser Verify / Docs Freshness plugins ----------
 # All four live in the OFFICIAL Anthropic marketplace (registered above).

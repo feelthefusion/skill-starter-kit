@@ -61,13 +61,15 @@ mkdir -p "$RECALL_DST"
 cp "$KIT_ROOT/SKILL.md" "$RECALL_DST/SKILL.md"
 echo "  · skill-starter-kit (recall + workflow map)  written ✓"
 write_kit_version "$KIT_ROOT" "$HERMES_SKILLS_DIR/$CATEGORY"
-kit_link_clis "$KIT_ROOT"   # kit-update runs from the on_session_start hook, so Hermes-only machines need it too
+kit_link_clis "$KIT_ROOT"
 
 # --- 8/9/12: portable CLI layers (work on any host, no plugins needed) -------
 echo "▶ portable security + verify CLI layers"
+MISSING_CLIS=""
 for tool in gitleaks osv-scanner uv gh railway wrangler cloudflared aws gcloud gws gam; do
-    ensure_cli_tool "$tool"
+    ensure_cli_tool "$tool" || MISSING_CLIS="$MISSING_CLIS $tool"
 done
+[ -z "$MISSING_CLIS" ] || echo "  ⚠ not installed:$MISSING_CLIS — see the messages above, fix, then re-run (the rest of the kit is installed)"
 
 # --- 7: GitHub MCP — check gh auth -------------------------------------------
 echo "▶ GitHub MCP — checking gh auth"
@@ -162,9 +164,6 @@ for ev, entries in json.load(sys.stdin).items(): print(ev + "\t" + json.dumps(en
 else
     echo "  · hooks not wired (hermes CLI missing or KIT_NO_HOOKS=1) — see skills/guardrails/templates/hermes-hooks.yaml"
 fi
-mkdir -p "$HOME/.local/bin" && ln -sf "$KIT_ROOT/install/init-project.sh" "$HOME/.local/bin/kit-init" && echo "  · kit-init → ~/.local/bin/kit-init ✓ (run it in any repo)"
-for c in kit-update kit-webhook; do ln -sf "$KIT_ROOT/install/$c.sh" "$HOME/.local/bin/$c"; done
-echo "  · kit-update, kit-webhook → ~/.local/bin ✓"
 
 echo
 echo "─── done ───────────────────────────────────────────────"
