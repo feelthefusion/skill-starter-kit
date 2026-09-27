@@ -123,8 +123,28 @@ fi
 # --- 12: Guardrails hook scripts → ~/.hermes/agent-hooks, wired into config.yaml -----------
 HOOKS_DIR="${HERMES_HOME:-$HOME/.hermes}/agent-hooks"
 mkdir -p "$HOOKS_DIR"
+# Never clobber a hook you edited. A file is "kit-owned" when it is byte-identical to a version
+# the kit ever shipped (git blob history) — the same rule kit-update uses for armed repos.
+# Files you edited are KEPT and reported, so a local customization survives every update.
+# Never `cp` over a file we keep: under `set -e` a failing cp aborts this whole installer.
+kit_owned_hook() {  # kit_owned_hook <installed-file> <template-name>
+    local blob
+    blob="$(git hash-object "$1" 2>/dev/null)" || return 1
+    git -C "$KIT_ROOT" log --format=%H -- "skills/guardrails/templates/$2" 2>/dev/null \
+      | while read -r c; do git -C "$KIT_ROOT" rev-parse "$c:skills/guardrails/templates/$2" 2>/dev/null; done \
+      | grep -qx "$blob"
+}
 for s in guard.sh format.sh verify-nudge.sh; do
-    cp "$KIT_SKILLS_SRC/guardrails/templates/$s" "$HOOKS_DIR/$s" && chmod +x "$HOOKS_DIR/$s"
+    src="$KIT_SKILLS_SRC/guardrails/templates/$s"; dst="$HOOKS_DIR/$s"
+    if [ ! -e "$dst" ]; then
+        cp "$src" "$dst"; chmod +x "$dst"; echo "  · $s installed ✓"
+    elif cmp -s "$dst" "$src"; then
+        chmod +x "$dst" 2>/dev/null || true; echo "  · $s already current ✓"
+    elif kit_owned_hook "$dst" "$s"; then
+        cp "$src" "$dst"; chmod +x "$dst"; echo "  · $s updated ✓"
+    else
+        echo "  · $s edited by you — kept (not overwritten)"
+    fi
 done
 echo "▶ guardrails hook scripts → $HOOKS_DIR ✓"
 if [ "${KIT_NO_HOOKS:-0}" != "1" ] && command -v hermes >/dev/null 2>&1; then
