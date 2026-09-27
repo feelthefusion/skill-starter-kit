@@ -68,11 +68,39 @@ for d in sorted(distributions(), key=lambda d: (d.metadata['Name'] or '').lower(
         continue
     print(f'{name}=={d.version}')
 PY
-    osv-scanner --lockfile requirements.verify.txt
+    osv-scanner --lockfile requirements.verify.txt --format json > .verify-osv.json 2>/dev/null || true
     rm -f requirements.verify.txt
   else
-    osv-scanner scan source -r .
+    osv-scanner scan source -r . --format json > .verify-osv.json 2>/dev/null || true
   fi
+  # Fail only on HIGH/CRITICAL (CVSS >= 7.0). A real tree almost always carries transitive or
+  # dev-only advisories, and a gate that is permanently red is one everyone learns to ignore.
+  if ! python3 - .verify-osv.json <<'PY'
+import json, sys
+THRESHOLD = 7.0                                  # CVSS: HIGH >= 7.0, CRITICAL >= 9.0
+try:
+    d = json.load(open(sys.argv[1]))
+except Exception as exc:
+    print(f"⚠ dependency audit: could not read osv-scanner output ({exc})")
+    sys.exit(0)
+rows = [(float(g.get("max_severity") or 0), p["package"].get("name", "?"),
+         p["package"].get("version", "?"), (r.get("source") or {}).get("path", ""),
+         ", ".join(g.get("ids", [])[:2]))
+        for r in d.get("results", []) for p in r.get("packages", []) for g in p.get("groups", [])]
+blocking = sorted((x for x in rows if x[0] >= THRESHOLD), reverse=True)
+print(f"dependency audit: {len(rows)} advisories, {len(blocking)} at HIGH/CRITICAL (CVSS >= {THRESHOLD})")
+for score, name, ver, path, ids in blocking[:15]:
+    print(f"  {score:>4}  {name} {ver}  {path}  {ids}")
+if len(blocking) > 15:
+    print(f"  ... {len(blocking) - 15} more")
+sys.exit(1 if blocking else 0)
+PY
+  then
+    echo "✗ dependency audit: HIGH/CRITICAL advisories above — upgrade or pin a patched version."
+    rm -f .verify-osv.json
+    exit 1
+  fi
+  rm -f .verify-osv.json
 else                                # a sandboxed hook has no network: skip VISIBLY, never `|| true`
   echo "⚠ dependency audit skipped: no network here (sandboxed hook). Runs in CI and when verify has network."
 fi

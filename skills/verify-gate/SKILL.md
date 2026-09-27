@@ -52,7 +52,10 @@ Rules for the script:
 - **Install from the lockfile first** (`npm ci`, `uv sync --locked`, `pnpm install
   --frozen-lockfile`) so the gate tests what will ship — `security-gate` layer 5.
 - **`osv-scanner scan source -r .`** is the dependency-tree layer from `security-gate`
-  (CVEs and known-malicious `MAL-*` packages).
+  (CVEs and known-malicious `MAL-*` packages). **Fail on HIGH/CRITICAL only** (CVSS ≥ 7.0) and
+  report the rest: a real tree carries transitive and dev-only advisories almost always, and a
+  gate that is permanently red is one everyone learns to ignore. `templates/verify.sh` implements
+  this — it parses `--format json` and blocks on `max_severity >= 7.0`.
 - **`uvx zizmor .github/workflows`** if the repo has Actions — `security-gate` layer 5.
 - **One Playwright smoke spec** if the repo renders a UI — `browser-verify`.
 

@@ -79,7 +79,10 @@ Two uses, both cheap:
   osv-scanner scan source -r .
   ```
   Reachability analysis suppresses CVEs your code can't actually reach, which is what keeps this
-  from becoming noise the agent learns to skip.
+  from becoming noise the agent learns to skip. **The gate fails on HIGH/CRITICAL only** (CVSS ≥ 7.0):
+  transitive and dev-only Medium/Low advisories are reported, not blocking — a check that is
+  always red is one everyone learns to ignore. `verify-gate`'s `templates/verify.sh` does the
+  filtering (it parses `osv-scanner --format json` and blocks on `max_severity >= 7.0`).
 
 **It catches malicious packages, not just vulnerable ones.** OSV.dev ingests the OpenSSF
 `malicious-packages` database, so `MAL-*` records (typosquats, hijacked releases like the 2026
@@ -121,7 +124,7 @@ Agent rules that go with it:
 | Layer | Deterministic gate? |
 |---|---|
 | gitleaks on staged diff | **yes** — exit code |
-| osv-scanner in `verify` | **yes** — exit code |
+| osv-scanner in `verify` | **yes** — exit code, HIGH/CRITICAL (CVSS ≥ 7.0) only |
 | cooldown / ignore-scripts / frozen lockfile | **yes** — the package manager enforces it |
 | zizmor in `verify` | **yes** — exit code |
 | security-guidance pattern warnings (edit time) | partial — regex, ~25 patterns |
