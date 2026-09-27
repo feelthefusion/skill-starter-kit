@@ -105,7 +105,11 @@ if has("package.json"):
     if "build" in s: steps.append(("build", f"{run} build", ""))
 elif has("pyproject.toml") or has("requirements.txt"):
     if has("uv.lock"): steps.append(("dependencies match the lockfile", "uv sync --locked", "security-gate layer 5 (idempotent, fast)"))
-    py = "uv run " if has("uv.lock") else ""
+    # Use the repo's own interpreter: `uv run` with a lockfile, else the local venv, else the
+    # system one. A bare `pytest` is not on PATH in a plain-venv repo — that is a RED gate on day one.
+    if has("uv.lock"): py = "uv run "
+    elif has(".venv", "bin", "python"): py = ".venv/bin/python -m "
+    else: py = ""
     if has("pyproject.toml") and re.search(r"\[tool\.ruff", open(os.path.join(dest, "pyproject.toml")).read()): steps.append(("lint", f"{py}ruff check .", ""))
     if any(has(d) for d in ("tests", "test")) or has("pytest.ini"): steps.append(("test", f"{py}pytest -q", ""))
     if has("pyproject.toml") and "mypy" in open(os.path.join(dest, "pyproject.toml")).read(): steps.append(("typecheck", f"{py}mypy .", ""))
@@ -124,7 +128,31 @@ out += ['step "dependency audit"             # security-gate layer 4: CVEs + kno
         "if ! command -v osv-scanner >/dev/null 2>&1; then",
         "  echo '⚠ dependency audit skipped: osv-scanner not installed (kit installer adds it).'",
         "elif curl -sS -m 4 -o /dev/null https://api.osv.dev/ 2>/dev/null || [ -n \"${CI:-}\" ]; then",
-        "  osv-scanner scan source -r .",
+        "  # A range-only manifest (\"aiohttp>=3.9\") has no resolved version, so a source scan reports",
+        "  # CVEs against the old floor — noise that trains you to ignore the gate. With no lockfile,",
+        "  # audit what a Python venv actually has installed instead.",
+        "  if [ -z \"$(ls uv.lock package-lock.json pnpm-lock.yaml yarn.lock bun.lock Cargo.lock poetry.lock 2>/dev/null)\" ] && [ -x .venv/bin/python ]; then",
+        "    .venv/bin/python - > requirements.verify.txt <<'PY'",
+        "import pathlib, tomllib",
+        "from importlib.metadata import distributions",
+        "norm = lambda s: s.lower().replace('_', '-').replace('.', '-')",
+        "try:",
+        "    proj = tomllib.load(open('pyproject.toml', 'rb'))['project']['name']",
+        "except Exception:",
+        "    proj = ''",
+        "for d in sorted(distributions(), key=lambda d: (d.metadata['Name'] or '').lower()):",
+        "    name = d.metadata['Name']",
+        "    if not name or norm(name) == norm(proj):",
+        "        continue",
+        "    if (pathlib.Path(d._path) / 'direct_url.json').exists():",
+        "        continue",
+        "    print(f'{name}=={d.version}')",
+        "PY",
+        "    osv-scanner --lockfile requirements.verify.txt",
+        "    rm -f requirements.verify.txt",
+        "  else",
+        "    osv-scanner scan source -r .",
+        "  fi",
         "else",
         "  echo '⚠ dependency audit skipped: no network here (sandboxed hook). It runs in CI and whenever verify runs with network.'",
         "fi", "",
@@ -153,7 +181,7 @@ echo "▶ 4. install hygiene"
 if [ -f "$DEST/pnpm-lock.yaml" ]; then put "$T/pnpm-workspace.yaml" pnpm-workspace.yaml; fi
 if [ -f "$DEST/yarn.lock" ]; then put "$T/.yarnrc.yml" .yarnrc.yml; fi
 if [ -f "$DEST/bun.lock" ] || [ -f "$DEST/bun.lockb" ]; then put "$T/bunfig.toml" bunfig.toml; fi
-if [ -f "$DEST/package.json" ] || [ ! -f "$DEST/pnpm-lock.yaml" ]; then merge_npmrc "$T/.npmrc" .npmrc; fi
+if [ -f "$DEST/package.json" ] && [ ! -f "$DEST/pnpm-lock.yaml" ]; then merge_npmrc "$T/.npmrc" .npmrc; fi
 echo "▶ 5. secrets"
 put "$T/.gitleaksignore" .gitleaksignore
 
@@ -195,6 +223,8 @@ if [ "${KIT_NO_BASELINE:-0}" != "1" ]; then
     grep -qx '.verify-baseline.log' "$DEST/.gitignore" 2>/dev/null || echo '.verify-baseline.log' >> "$DEST/.gitignore"
 fi
 grep -qx '.verify.lock/' "$DEST/.gitignore" 2>/dev/null || echo '.verify.lock/' >> "$DEST/.gitignore"
+# temp manifest the dependency audit writes when there is no lockfile (see gen_verify)
+grep -qx 'requirements.verify.txt' "$DEST/.gitignore" 2>/dev/null || echo 'requirements.verify.txt' >> "$DEST/.gitignore"
 # per-repo stamp so "which kit version armed this repo" is answerable
 printf 'kit: %s\ninit: %s\n' "$(git -C "$KIT_ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)" "$(date -u +%FT%TZ)" > "$DEST/.claude/kit-version"
 # register for kit-update (hook files you haven't edited follow kit updates automatically)

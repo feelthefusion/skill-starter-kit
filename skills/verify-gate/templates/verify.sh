@@ -39,7 +39,7 @@ step "lint"
 npm run lint                        # or: ruff check . / golangci-lint run / cargo clippy -- -D warnings
 
 step "test"
-npm test                            # or: pytest -q / go test ./... / cargo test
+npm test                            # or: .venv/bin/python -m pytest -q / go test ./... / cargo test
 
 step "build"
 npm run build                       # or: go build ./... / cargo build --release
@@ -48,7 +48,31 @@ step "dependency audit"             # security-gate layer 4: CVEs + known-malici
 if ! command -v osv-scanner >/dev/null 2>&1; then
   echo "⚠ dependency audit skipped: osv-scanner not installed (kit installer adds it; brew/GitHub releases)."
 elif curl -sS -m 4 -o /dev/null https://api.osv.dev/ 2>/dev/null || [ -n "${CI:-}" ]; then
-  osv-scanner scan source -r .
+  # A range-only manifest ("aiohttp>=3.9") has no resolved version, so a source scan reports CVEs
+  # against the old floor — noise that trains you to ignore the gate. With no lockfile at all,
+  # audit what a Python venv actually has installed instead.
+  if [ -z "$(ls uv.lock package-lock.json pnpm-lock.yaml yarn.lock bun.lock Cargo.lock poetry.lock 2>/dev/null)" ] && [ -x .venv/bin/python ]; then
+    .venv/bin/python - > requirements.verify.txt <<'PY'
+import pathlib, tomllib
+from importlib.metadata import distributions
+norm = lambda s: s.lower().replace('_', '-').replace('.', '-')
+try:
+    proj = tomllib.load(open('pyproject.toml', 'rb'))['project']['name']
+except Exception:
+    proj = ''
+for d in sorted(distributions(), key=lambda d: (d.metadata['Name'] or '').lower()):
+    name = d.metadata['Name']
+    if not name or norm(name) == norm(proj):
+        continue
+    if (pathlib.Path(d._path) / 'direct_url.json').exists():
+        continue
+    print(f'{name}=={d.version}')
+PY
+    osv-scanner --lockfile requirements.verify.txt
+    rm -f requirements.verify.txt
+  else
+    osv-scanner scan source -r .
+  fi
 else                                # a sandboxed hook has no network: skip VISIBLY, never `|| true`
   echo "⚠ dependency audit skipped: no network here (sandboxed hook). Runs in CI and when verify has network."
 fi
