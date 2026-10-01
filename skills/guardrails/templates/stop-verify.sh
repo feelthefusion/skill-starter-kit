@@ -43,11 +43,7 @@ case "$edited" in
   unknown) git rev-parse --is-inside-work-tree >/dev/null 2>&1 && [ -z "$(git status --porcelain 2>/dev/null)" ] && exit 0 ;;
 esac
 
-# VERIFY_FAST=1 tells the gate this is the per-turn run: fail fast (pytest -x and the like)
-# instead of running everything. A green run is unaffected; a failing run surfaces the real
-# error in seconds rather than ~31s. Manual and pre-push runs leave it unset, so they still
-# list every failure at once.
-out="$(VERIFY_FAST=1 $v 2>&1)"; rc=$?
+out="$($v 2>&1)"; rc=$?
 if [ $rc -eq 0 ]; then exit 0; fi
 
 count_f="${TMPDIR:-/tmp}/kit-verify-blocks-$sid"

@@ -41,9 +41,6 @@ npm run lint                        # or: ruff check . / golangci-lint run / car
 
 step "test"
 npm test                            # or: .venv/bin/python -m pytest -q / go test ./... / cargo test
-# VERIFY_FAST=1 is set by the Stop hook for the per-turn run: make this stage fail fast when it
-# is set (pytest: append -x), so a broken turn comes back in seconds instead of a full suite.
-# Leave it unset for manual and pre-push runs, which should report every failure at once.
 
 step "build"
 npm run build                       # or: go build ./... / cargo build --release
