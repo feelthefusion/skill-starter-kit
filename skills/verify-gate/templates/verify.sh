@@ -13,11 +13,12 @@ step() { printf '\n── %s ─────────────────
 
 # One verify at a time per tree: several sessions (or a Stop hook + a manual run) racing the same
 # node_modules / test database is how "tsc vanished" and flaky suites happen. mkdir is atomic; a
-# lock older than 20 min belongs to a dead run.
+# lock older than 5 min belongs to a dead run (was 20; shortened so one stuck run cannot
+# hold every other agent hostage).
 LOCK=".verify.lock"; waited=0
 until mkdir "$LOCK" 2>/dev/null; do
-  [ -n "$(find "$LOCK" -maxdepth 0 -mmin +20 2>/dev/null)" ] && { rm -rf "$LOCK"; continue; }
-  [ "$waited" -ge 1200 ] && { echo "verify: another run has held $LOCK for 20 minutes" >&2; exit 1; }
+  [ -n "$(find "$LOCK" -maxdepth 0 -mmin +5 2>/dev/null)" ] && { rm -rf "$LOCK"; continue; }
+  [ "$waited" -ge 300 ] && { echo "verify: another run has held $LOCK for 5 minutes" >&2; exit 1; }
   [ "$waited" -eq 0 ] && echo "verify: another run is in progress, waiting for it"
   sleep 5; waited=$((waited + 5))
 done
