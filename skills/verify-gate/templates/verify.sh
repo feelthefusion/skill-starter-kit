@@ -41,6 +41,20 @@ npm run lint                        # or: ruff check . / golangci-lint run / car
 
 step "test"
 npm test                            # or: .venv/bin/python -m pytest -q / go test ./... / cargo test
+# The Stop hook runs this gate at the END OF EVERY turn that edits files, so this stage's cost is
+# per-turn and it grows with the suite — invisibly. One repo's gate ran ~75s when armed and 157s
+# three days later: same command, suite grown 70 -> 139 files. Re-time it when the suite grows.
+# Python suites: parallelize, guarded so a missing plugin degrades loudly instead of breaking:
+#   if "$PY" -c 'import xdist' 2>/dev/null; then
+#     "$PY" -m pytest -q -n "${VERIFY_WORKERS:-8}" --dist loadfile
+#   else
+#     echo '⚠ xdist not installed — running serially (~6x slower). Fix: pip install pytest-xdist'
+#     "$PY" -m pytest -q
+#   fi
+# `loadfile` keeps each file's tests on one worker, which is what makes it safe when suites share
+# fixtures or DB state (measured 6x on 2,400 tests). JS runners already parallelize — but a vitest
+# config with `fileParallelism: false` re-serializes them ON PURPOSE (shared tables, FK deadlocks):
+# leave those alone, they are correct.
 
 step "build"
 npm run build                       # or: go build ./... / cargo build --release
