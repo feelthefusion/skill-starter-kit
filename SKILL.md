@@ -145,7 +145,9 @@ standalone TDD / debugging / code-review / worktree skills next to Superpowers.
   verify-gate, browser-verify, docs-freshness, guardrails, skill-starter-kit.
 - Machine stamp `~/.claude/skills/.kit-version` (Hermes: `~/.hermes/skills/<category>/.kit-version`)
   matches the kit's `git rev-parse --short HEAD`; each fetched skill has an `.upstream` file.
-  Per repo, `kit-init` writes `.claude/kit-version`. A repo with a real `CLAUDE.md` intentionally
+  Per repo, `kit-init` writes `.claude/kit-version`. A repo opts out for good with
+  `<!-- kit:opt-out -->` in its CLAUDE.md/AGENTS.md (or a `.claude/kit-optout` file): kit-init
+  refuses it and kit-update never touches it and drops it from the registry. A repo with a real `CLAUDE.md` intentionally
   has no `AGENTS.md`.
 - In a repo after `kit-init`: `./verify.sh` exits 0 clean and names the failing check
   dirty; a deliberate type error blocks the turn; `echo '{"tool_input":{"command":"git push

@@ -21,6 +21,17 @@ KIT_ROOT="$(cd "$(dirname "$SELF")/.." && pwd)"
 DEST="$(cd "${1:-.}" && pwd)"
 T="$KIT_ROOT/templates/project"
 
+# A repo can opt out for good: `<!-- kit:opt-out -->` in its CLAUDE.md or AGENTS.md, or a
+# .claude/kit-optout file. Such a repo is never armed, whoever runs this — the global
+# instructions tell every agent to kit-init a repo with no verify.sh/AGENTS.md, and some repos
+# deliberately have neither. (vibes: its root .gitignore and pnpm-workspace.yaml are inputs to
+# the app's OTA fingerprint, so arming it ships over-the-air updates to no device.)
+if [ -f "$DEST/.claude/kit-optout" ] || grep -qs 'kit:opt-out' "$DEST/CLAUDE.md" "$DEST/AGENTS.md"; then
+    echo "✗ $DEST opts out of the Skill Starter Kit (kit:opt-out in CLAUDE.md/AGENTS.md, or .claude/kit-optout)."
+    echo "  Nothing was written. Remove the marker first if this repo should be armed."
+    exit 0
+fi
+
 put() {  # put <src> <dst-relative>
     if [ -e "$DEST/$2" ]; then echo "  · $2  exists — kept"; else
         mkdir -p "$(dirname "$DEST/$2")"; cp "$1" "$DEST/$2"; echo "  · $2  created ✓"; fi
