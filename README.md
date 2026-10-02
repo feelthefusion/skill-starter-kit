@@ -100,6 +100,7 @@ curl -fsSL https://raw.githubusercontent.com/feelthefusion/skill-starter-kit/mai
 ```
 ```bash
 kit-init      # in any repo: AGENTS.md, generated verify.sh, hooks, deny-list, sandbox, hygiene, LSP + context7 + GitHub MCP, baseline run
+              # (refuses a repo whose CLAUDE.md/AGENTS.md says kit:opt-out, or that has .claude/kit-optout)
 ```
 
 **What the one-liner does for you (Claude Code):** clones/pulls the kit · fetches Graphify, Caveman,

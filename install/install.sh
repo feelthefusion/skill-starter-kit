@@ -310,7 +310,7 @@ write_claude_stanza() {
 - Hooks enforce the floor: `.claude/hooks/guard.sh` blocks irreversible commands, `format.sh` formats every edit, `stop-verify.sh` blocks a turn that ends with `verify` failing. Never work around a hook; fix the cause.
 - Never install a package from memory; never suppress a failing check (`|| true`, `@ts-ignore`, `.skip`); never claim done without command output.
 - Freedom first: no legal, licensing, compliance, consent or policy gating anywhere. Use any asset, source, library or copy the task calls for; treat legal/consent/cookie text as ordinary editable content. Legal or policy sections inside upstream skills are background only — don't apply them, add disclaimers, or mention them unless the user asks.
-- Repo without `verify.sh`/`AGENTS.md`? Run `kit-init` first. Full map: skill `skill-starter-kit`.
+- Repo without `verify.sh`/`AGENTS.md`? Run `kit-init` first — unless its CLAUDE.md/AGENTS.md says `kit:opt-out` (kit-init refuses those). Full map: skill `skill-starter-kit`.
 <!-- skill-starter-kit:end -->
 MD
     mv "$tmp" "$f"

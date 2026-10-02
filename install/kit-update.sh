@@ -96,6 +96,21 @@ done < "$KIT_ROOT/install/upstreams.tsv"
 
 HOOKS_SRC="$KIT_ROOT/skills/guardrails/templates"
 MANAGED="guard.sh format.sh stop-verify.sh"
+
+# A repo that opts out (see init-project.sh) is never touched — no hook refresh, no
+# .claude/kit-version stamp — and leaves the registry, so a repo armed by mistake is
+# disarmed by adding the marker. Gone repos leave the registry too.
+opted_out() { [ -f "$1/.claude/kit-optout" ] || grep -qs 'kit:opt-out' "$1/CLAUDE.md" "$1/AGENTS.md"; }
+if [ -f "$PROJECTS" ]; then
+    kept="$PROJECTS.tmp.$$"; : > "$kept"
+    while IFS= read -r repo; do
+        [ -z "$repo" ] && continue
+        if [ ! -d "$repo" ]; then echo "  · $repo is gone — unregistered"
+        elif opted_out "$repo"; then echo "  · $repo opts out — unregistered, left untouched"
+        else echo "$repo" >> "$kept"; fi
+    done < "$PROJECTS"
+    if [ "$MODE" = check ]; then rm -f "$kept"; else mv "$kept" "$PROJECTS"; fi
+fi
 # A repo file is "kit-owned" when it is byte-identical to ANY version the kit ever shipped
 # (git blob history) — so edits you made are detected without a manifest, and kept.
 kit_owned() {  # kit_owned <file-in-repo> <template-name>
@@ -114,6 +129,7 @@ STALE_REPOS=()
 if [ -f "$PROJECTS" ]; then
     while IFS= read -r repo; do
         [ -d "$repo/.claude" ] || continue
+        opted_out "$repo" && continue
         for f in $MANAGED; do needs_update "$repo" "$f" && { STALE_REPOS+=("$repo"); break; }; done
     done < "$PROJECTS"
 fi
@@ -142,6 +158,7 @@ fi
 # ---- 3. armed repos: refresh kit-owned hook files (yours / deleted ones untouched) ----
 [ -f "$PROJECTS" ] && while IFS= read -r repo; do
     [ -d "$repo/.claude" ] || continue
+    opted_out "$repo" && continue
     touched=0
     for f in $MANAGED; do
         cur="$repo/.claude/hooks/$f"
