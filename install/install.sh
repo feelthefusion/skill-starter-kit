@@ -8,7 +8,7 @@
 #   1. Graphify          skill (FETCHED from Graphify-Labs/graphify) — on-demand orientation
 #   2. Superpowers       plugin (obra/superpowers-marketplace; also listed as
 #                        superpowers@claude-plugins-official — do NOT enable both)
-#   3. Supermemory       plugin + LOCAL self-hosted server (supermemoryai/claude-supermemory)
+#   3. Memory            claude-mem plugin (thedotmack/claude-mem) — local, Claude Code native
 #   4. Taste-Skill       skills (taste-code [kit] + taste-skill [FETCHED from Leonxlnx/taste-skill])
 #   5. LSP Plugins       skill (copied) — installs LSP per stack at runtime
 #   6. GitHub MCP        skill (copied) — official github/github-mcp-server (issues/PRs/branches)
@@ -41,7 +41,7 @@ kit_fetch_upstreams "$KIT_ROOT"
 
 # --- Common prereqs ---------------------------------------------------------
 echo "▶ checking prereqs …"
-command -v node >/dev/null 2>&1 || { echo "✗ node missing (required by Claude Code + Supermemory)"; exit 1; }
+command -v node >/dev/null 2>&1 || { echo "✗ node missing (required by Claude Code)"; exit 1; }
 echo "✓ node $(node --version)"
 
 # --- skills are synced into ~/.claude/skills (upstream-fetched copy when available) -----
@@ -85,97 +85,22 @@ else
     echo "      /plugin marketplace add obra/superpowers-marketplace"
 fi
 
-# --- 3: Supermemory plugin + LOCAL server ------------------------------------
-echo "▶ Supermemory — plugin + LOCAL self-hosted server"
-# 3a. register plugin marketplace
+# --- 3: Memory — claude-mem plugin (local, Claude Code native) -----------------
+echo "▶ configuring claude-mem (memory plugin)"
 python3 - "$CLAUDE_SETTINGS" <<'PY'
 import json, sys, os
 p = sys.argv[1]
-os.makedirs(os.path.dirname(p) or ".", exist_ok=True)
-data = {}
+d = {}
 if os.path.exists(p):
-    with open(p) as f: data = json.load(f)
-data.setdefault("extraKnownMarketplaces", {})["supermemory-plugins"] = {
-    "source": {"source": "github", "repo": "supermemoryai/claude-supermemory"}
+    with open(p) as f: d = json.load(f)
+d.setdefault("extraKnownMarketplaces", {})["thedotmack"] = {
+    "source": {"source": "github", "repo": "thedotmack/claude-mem"}
 }
-data.setdefault("enabledPlugins", {})["supermemory@supermemory-plugins"] = True
+d.setdefault("enabledPlugins", {})["claude-mem@thedotmack"] = True
 with open(p, "w") as f:
-    json.dump(data, f, indent=2)
-    f.write("\n")
-print("  · supermemory plugin marketplace registered ✓")
+    json.dump(d, f, indent=2); f.write("\n")
+print("  · claude-mem marketplace + plugin registered ✓")
 PY
-
-# 3b. install/update local server binary (self-contained, no Docker)
-# The upstream installer is the live source — re-run it every time so the binary
-# tracks the latest release rather than whatever was first installed.
-echo "▶ installing/updating supermemory local server (latest from supermemory.ai)"
-if curl -fsSL https://supermemory.ai/install | bash; then
-    echo "  · supermemory-server at latest ✓"
-else
-    if [ -x "$HOME/.local/bin/supermemory-server" ]; then
-        echo "  ⚠ update failed (network?) — keeping existing binary"
-    else
-        echo "  ⚠ install failed (network?) — re-run later or see https://supermemory.ai/install"
-    fi
-fi
-
-# 3b. extraction model — memory extraction is short, structured, high-volume work, so the kit
-# defaults to a fast, cheap model: DeepSeek V4.1 Flash via OpenRouter. Applied only when the
-# server talks to OpenRouter, and only over an unset model or the kit's previous default
-# (claude-sonnet-*); any other model you picked is kept. Override: KIT_SUPERMEMORY_MODEL=<id>.
-SM_ENV="$HOME/.supermemory/env"
-SM_MODEL="${KIT_SUPERMEMORY_MODEL:-deepseek/deepseek-v4.1-flash}"
-if [ -f "$SM_ENV" ] && grep -q 'OPENAI_BASE_URL=.*openrouter.ai' "$SM_ENV"; then
-    SM_CUR="$(sed -n 's/^export OPENAI_MODEL="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' "$SM_ENV" | tail -1)"
-    if [ "$SM_CUR" = "$SM_MODEL" ]; then
-        echo "  · extraction model: $SM_MODEL ✓"
-    elif [ -z "$SM_CUR" ] || [ -n "${KIT_SUPERMEMORY_MODEL:-}" ] || case "$SM_CUR" in anthropic/claude-sonnet-*) true ;; *) false ;; esac; then
-        grep -v '^export OPENAI_MODEL=' "$SM_ENV" > "$SM_ENV.tmp" && printf 'export OPENAI_MODEL="%s"\n' "$SM_MODEL" >> "$SM_ENV.tmp" \
-            && chmod 600 "$SM_ENV.tmp" && mv "$SM_ENV.tmp" "$SM_ENV"
-        echo "  · extraction model: ${SM_CUR:-unset} → $SM_MODEL ✓"
-        [ "$(uname -s)" = Darwin ] && launchctl kickstart -k "gui/$(id -u)/com.supermemory.local" >/dev/null 2>&1
-    else
-        echo "  · extraction model: $SM_CUR (your choice — kept; kit default is $SM_MODEL)"
-    fi
-fi
-
-# 3c. launchd auto-start (macOS) — server runs at login
-if [[ "$(uname -s)" == "Darwin" ]]; then
-    AGENT="$HOME/Library/LaunchAgents/com.supermemory.local.plist"
-    if [ -f "$AGENT" ]; then
-        echo "  · launchd agent already present — skipping"
-    elif [ -x "$HOME/.local/bin/supermemory-server" ]; then
-        cat > "$AGENT" <<EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-    <key>Label</key><string>com.supermemory.local</string>
-    <key>ProgramArguments</key><array><string>$HOME/.local/bin/supermemory-server</string></array>
-    <key>RunAtLoad</key><true/>
-    <key>KeepAlive</key><true/>
-    <key>WorkingDirectory</key><string>$HOME</string>
-    <key>StandardOutPath</key><string>$HOME/.supermemory/launchd.out.log</string>
-    <key>StandardErrorPath</key><string>$HOME/.supermemory/launchd.err.log</string>
-</dict></plist>
-EOF
-        launchctl bootstrap "gui/$(id -u)" "$AGENT" 2>/dev/null || launchctl load "$AGENT" 2>/dev/null
-        echo "  · launchd agent installed (auto-starts at login) ✓"
-    fi
-fi
-
-# 3d. point Claude Code plugin at local server (env vars in shell profile)
-if [ -f "$HOME/.supermemory/api-key" ]; then
-    SM_KEY="$(cat "$HOME/.supermemory/api-key")"
-    RC="${SUPERMEMORY_RC:-$HOME/.zshrc}"
-    if ! grep -q "SUPERMEMORY_API_URL" "$RC" 2>/dev/null; then
-        printf '\n# Supermemory local\nexport SUPERMEMORY_API_URL="http://localhost:6767"\nexport SUPERMEMORY_CC_API_KEY="%s"\n' "$SM_KEY" >> "$RC"
-        echo "  · env vars appended to $RC (recall/save now hit localhost:6767) ✓"
-    else
-        echo "  · SUPERMEMORY_API_URL already in $RC — skipping"
-    fi
-else
-    echo "  · no supermemory api-key yet — start server once (first run prints key), then re-run install"
-fi
 
 # --- 8: Security Gate — official Anthropic security plugins -------------------
 echo "▶ configuring Security Gate (official Anthropic security plugins)"
@@ -259,40 +184,7 @@ echo "─── done ───────────────────�
 echo "Plugins track GitHub automatically: marketplaces are registered by repo, so"
 echo "Claude Code fetches the latest from origin — no pinned versions in this kit."
 
-# --- Supermemory plugin → LOCAL server. The plugin reads SUPERMEMORY_API_URL / SUPERMEMORY_CC_API_KEY
-# from the environment only; the Claude desktop app never sources ~/.zshrc, so without this the
-# SessionStart hook assumes cloud and opens the Supermemory login page every session.
-# Claude Code's settings.json `env` block is inherited by hooks and MCP servers — set it there.
-SM_URL="${SUPERMEMORY_API_URL:-http://localhost:6767}"
-SM_KEY_FILE="$HOME/.supermemory/api-key"
-if [ -s "$SM_KEY_FILE" ] && command -v python3 >/dev/null 2>&1; then
-    python3 - "$CLAUDE_SETTINGS" "$SM_URL" "$SM_KEY_FILE" <<'PY'
-import json, sys, os
-p, url, keyf = sys.argv[1:4]
-d = json.load(open(p)) if os.path.exists(p) else {}
-env = d.setdefault("env", {})
-changed = env.get("SUPERMEMORY_API_URL") != url or not env.get("SUPERMEMORY_CC_API_KEY")
-env["SUPERMEMORY_API_URL"] = url
-env["SUPERMEMORY_CC_API_KEY"] = open(keyf).read().strip()
-json.dump(d, open(p, "w"), indent=2); open(p, "a").write("\n")
-print("  · settings.json env → Supermemory LOCAL server (%s) %s" % (url, "✓" if changed else "already set ✓"))
-PY
-    chmod 600 "$CLAUDE_SETTINGS" 2>/dev/null || true
-fi
-# Signal-only capture. By default the plugin saves the WHOLE transcript at every Stop; with a
-# self-hosted server that means thousands of chunks through a local CPU embedding model, the
-# session-start profile call exceeds the plugin's fixed 3 s timeout and it reports "unreachable".
-# Signal extraction saves decisions/fixes/architecture only — what the kit wants remembered.
-SMC="$HOME/.supermemory-claude/settings.json"; mkdir -p "$(dirname "$SMC")"
-python3 - "$SMC" <<'PY'
-import json, sys, os
-p = sys.argv[1]; d = json.load(open(p)) if os.path.exists(p) else {}
-if d.get("signalExtraction") is not True:
-    d["signalExtraction"] = True; json.dump(d, open(p, "w"), indent=2); open(p, "a").write("\n")
-    print("  · supermemory plugin: signal-only capture ✓ (keeps the local embedder responsive)")
-else:
-    print("  · supermemory plugin: signal-only capture already set ✓")
-PY
+# --- memory: claude-mem (installed above) — no local server or env needed ---
 
 # --- always-on: a short kit stanza in the USER-level ~/.claude/CLAUDE.md -------------------
 # Skills are model-invoked from their descriptions; this 10-line stanza makes the workflow the
@@ -347,8 +239,7 @@ if [ -n "$CLAUDE_BIN" ] && [ -x "$CLAUDE_BIN" ]; then
     echo "▶ installing plugins via $("$CLAUDE_BIN" --version 2>/dev/null | head -1)"
     "$CLAUDE_BIN" plugin marketplace add anthropics/claude-plugins-official >/dev/null 2>&1 || true
     "$CLAUDE_BIN" plugin marketplace add obra/superpowers-marketplace       >/dev/null 2>&1 || true
-    "$CLAUDE_BIN" plugin marketplace add supermemoryai/supermemory-plugins  >/dev/null 2>&1 || true
-    for p in superpowers@superpowers-marketplace supermemory@supermemory-plugins \
+    for p in superpowers@superpowers-marketplace claude-mem@thedotmack \
              security-guidance@claude-plugins-official claude-security@claude-plugins-official \
              playwright@claude-plugins-official chrome-devtools-mcp@claude-plugins-official; do
         if "$CLAUDE_BIN" plugin list 2>/dev/null | grep -q "❯ $p"; then
@@ -363,7 +254,6 @@ if [ -n "$CLAUDE_BIN" ] && [ -x "$CLAUDE_BIN" ]; then
     fi
 else
     echo "Next: inside Claude Code run  /plugin install superpowers@superpowers-marketplace"
-    echo "                               /plugin install supermemory@supermemory-plugins"
     echo "                               /plugin install security-guidance@claude-plugins-official"
     echo "                               /plugin install claude-security@claude-plugins-official"
     echo "                               /plugin install playwright@claude-plugins-official"

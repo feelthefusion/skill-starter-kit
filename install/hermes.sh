@@ -8,7 +8,7 @@
 #   0. AGENTS.md template  (per repo — install/init-project.sh)
 #   1. Graphify            fetched from Graphify-Labs/graphify (on-demand orientation)
 #   2. Superpowers         NATIVE Hermes plugin: `hermes plugins install obra/superpowers --enable`
-#   3. Supermemory         native Hermes memory provider (`memory.provider: supermemory`)
+#   3. Memory             Hermes built-in memory provider (claude-mem is Claude Code-only)
 #   4. Taste               taste-code (kit) + taste-skill (fetched from Leonxlnx/taste-skill)
 #   5. LSP Plugins         skill — manual LSP path on Hermes
 #   6. GitHub MCP          skill — official server via mcp_servers: / gh CLI
@@ -95,30 +95,9 @@ else
     echo "  · hermes CLI not on PATH — install Superpowers later: hermes plugins install obra/superpowers --enable"
 fi
 
-# --- 3: Supermemory as the Hermes memory provider (automatic when the local server is up) ---
-echo "▶ Supermemory memory provider"
-SM_URL="${SUPERMEMORY_API_URL:-http://localhost:6767}"
-SM_KEY_FILE="$HOME/.supermemory/api-key"
-HH="${HERMES_HOME:-$HOME/.hermes}"
-if command -v hermes >/dev/null 2>&1 && curl -fsS -m 3 -o /dev/null "$SM_URL/" 2>/dev/null && [ -s "$SM_KEY_FILE" ]; then
-    HPY="$(dirname "$(readlink -f "$(command -v hermes)")")/python"
-    [ -x "$HPY" ] || HPY="$HH/hermes-agent/venv/bin/python"
-    if [ -x "$HPY" ] && ! "$HPY" -c 'import supermemory' >/dev/null 2>&1; then
-        "$HPY" -m pip install -q supermemory >/dev/null 2>&1 || uv pip install -q --python "$HPY" supermemory >/dev/null 2>&1 || true
-    fi
-    [ -f "$HH/supermemory.json" ] || printf '{\n  "base_url": "%s"\n}\n' "$SM_URL" > "$HH/supermemory.json"
-    touch "$HH/.env"; chmod 600 "$HH/.env"
-    grep -q '^SUPERMEMORY_API_KEY=' "$HH/.env" || printf 'SUPERMEMORY_API_KEY=%s\n' "$(cat "$SM_KEY_FILE")" >> "$HH/.env"
-    if [ "$(hermes config get memory.provider 2>/dev/null)" != "supermemory" ]; then
-        hermes config set memory.provider supermemory >/dev/null 2>&1 && echo "  · memory.provider = supermemory (local server $SM_URL) ✓" \
-            || echo "  ⚠ could not set memory.provider — run: hermes config set memory.provider supermemory"
-    else
-        echo "  · memory.provider already supermemory ✓"
-    fi
-else
-    echo "  · local Supermemory server not detected (needs $SM_URL up + $SM_KEY_FILE) — built-in memory stays active."
-    echo "    Install the server with the Claude Code installer or the supermemory-local skill, then re-run."
-fi
+# --- 3: Memory — Hermes uses its BUILT-IN memory provider. claude-mem is
+#     Claude Code-only (no Hermes integration), so nothing is wired here.
+echo "▶ Memory: Hermes built-in (claude-mem is Claude Code-only — skipped)"
 
 # --- 12: Guardrails hook scripts → ~/.hermes/agent-hooks, wired into config.yaml -----------
 HOOKS_DIR="${HERMES_HOME:-$HOME/.hermes}/agent-hooks"
